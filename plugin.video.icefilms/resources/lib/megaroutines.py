@@ -5,9 +5,6 @@
 
 Python link resolver for megaupload.
 
-Credits: Thank you Coolblaze,Voinage and PGuedes for the megavideo code.
-         Also, thanks to the author of this code:
-         http://stackoverflow.com/questions/4422389/use-mechanize-to-log-into-megaupload
 '''
 
 import re,sys,os
