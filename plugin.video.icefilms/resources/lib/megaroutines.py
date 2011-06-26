@@ -1,6 +1,6 @@
 '''
  _ ___ __  _   __  __    ____      ___ __ 
- /|/|(_  / _ /_| /__)/  )/  //  //| )(_  (   v0.3 Final -- Deprecated by videourlresolver
+ /|/|(_  / _ /_| /__)/  )/  //  //| )(_  (   v0.3.1 Final -- Deprecated by videourlresolver
 /   |/__(__)(  |/ ( (__/(__/(  (/ |/ /____)  Copyleft Anarchintosh.
 
 Python link resolver for megaupload.
