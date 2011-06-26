@@ -4,8 +4,6 @@
 /   |/__(__)(  |/ ( (__/(__/(  (/ |/ /____)  Copyleft Anarchintosh.
 
 Python link resolver for megaupload.
-In the future it will support megavideo.
-In the future it will support Megaporn+Megaporn/Video links.
 
 Credits: Thank you Coolblaze,Voinage and PGuedes for the megavideo code.
          Also, thanks to the author of this code:
