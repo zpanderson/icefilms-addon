@@ -124,16 +124,20 @@ class megaupload:
         #returns 'free' or 'premium' if logged in
         #returns 'none' if not logged in
         
-        login = re.search('<b>Welcome</b>', source)
-        premium = re.search('flashvars.status = "premium";', source)        
+        login = re.search('Welcome', source)
+        premium = re.search('flashvars.status = "premium";', source)
+        platinum = re.search('flashvars.status = "platinum";', source)       
 
         if login is not None:
-             if premium is not None:
-                  return 'premium'
-             elif premium is None:
-                  return 'free'
+            if premium is not None:
+                return 'premium'
+            elif premium is None:
+                if platinum is not None:
+                    return 'premium'
+                elif platinum is None:
+                    return 'free'
         elif login is None:
-             return 'none'
+            return None
 
  
    def dls_limited(self):
