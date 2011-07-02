@@ -1,3 +1,7 @@
+v1.0.8 (Friday, 1 July 2011):
+  - fix broken sources introduced by IceFilms site update
+  - separate folders for TV and movie favourites
+
 v1.0.7 (Saturday, 4 June 2011):
   - fix script errors introduced by IceFilms site update
   - favourites fix
