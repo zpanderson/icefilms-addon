@@ -1,3 +1,7 @@
+v1.0.9 (Saturday, 2 July 2011):
+  - fix favourites
+  - fix 2shared sources
+
 v1.0.8 (Friday, 1 July 2011):
   - fix broken sources introduced by IceFilms site update
   - separate folders for TV and movie favourites
