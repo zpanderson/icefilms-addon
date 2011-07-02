@@ -469,8 +469,11 @@ class MovieMetaData:
         self.dbcur.execute('CREATE INDEX IF NOT EXISTS nameindex on movie_meta (name);')
 
     def _cache_lookup_movie_by_imdb(self, imdb_id):
+        # select database row where imdb_id matches
         # select * is easier since we return a dict but may not be efficient.
-        self.dbcur.execute("SELECT * FROM movie_meta WHERE imdb_id = '%s'" % imdb_id) #select database row where imdb_id matches
+        # XXX: squashed bug: the imdb_id may not be set (in the HTML), resulting in a chunk of HTML being passed here,
+        # which may contain a single quote, which broke the previously unsanitized query
+        self.dbcur.execute("SELECT * FROM movie_meta WHERE imdb_id = ?", (imdb_id,))
         matchedrow = self.dbcur.fetchone()
         if matchedrow:
                 return dict(matchedrow)

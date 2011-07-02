@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#Icefilms.info v1.0.9 - anarchintosh / daledude / westcoast13 2011-07-02
+#Icefilms.info v1.0.10 - anarchintosh / daledude / westcoast13 2011-07-02
 
 # Quite convoluted code. Needs a good cleanup for v1.1.0
 
@@ -1949,22 +1949,23 @@ def addDir(name, url, mode, iconimage, metainfo=False, imdb=False, delfromfav=Fa
     if meta is not False:    
         liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
 
-        infoLabels = {}
-        infoLabels['title'] = name
-        infoLabels['plot'] = meta['plot']
-        infoLabels['genre'] = meta['genres']
         # XXX squashed bug: XBMC gives an incredibly inaccurate and unhelpful error:
         #
         #     ERROR: Error Type: exceptions.TypeError
         #     ERROR: Error Contents: argument 1 must be unicode or str
         #
-        # in an unrelated part of the code unless we ensure this is a string (rather than an int)
-        infoLabels['duration'] = str(meta['duration'])
-        infoLabels['premiered'] = meta['premiered']
-        infoLabels['studio'] = meta['studios']
-        infoLabels['mpaa'] = meta['mpaa']
-        infoLabels['code'] = meta['imdb_id']
-        infoLabels['rating'] = meta['rating']
+        # in an unrelated part of the code unless we ensure these values have the correct type (usually a string)
+
+        infoLabels = {}
+        infoLabels['code'] = str(meta['imdb_id'])
+        infoLabels['duration'] = str(meta['duration']) # XXX: was int
+        infoLabels['genre'] = str(meta['genres'])
+        infoLabels['mpaa'] = str(meta['mpaa'])
+        infoLabels['plot'] = meta['plot']  # XXX: don't try (and fail) to coerce Unicode to ASCII
+        infoLabels['premiered'] = str(meta['premiered'])
+        infoLabels['rating'] = float(meta['rating']) # XXX: was str
+        infoLabels['studio'] = meta['studios'] # XXX: don't try (and fail) to coerce Unicode to ASCII
+        infoLabels['title'] = name # XXX: don't try (and fail) to coerce Unicode to ASCII
 
         try:
                 trailer_id = re.match('^[^v]+v=(.{11}).*', meta['trailer_url']).group(1)
@@ -1987,6 +1988,9 @@ def addDir(name, url, mode, iconimage, metainfo=False, imdb=False, delfromfav=Fa
         else:
             #if directory is an episode list or movie
             if mode == 100 or mode == 12:
+                if mode == 100:
+                    contextMenuItems.append(('Movie Information', 'XBMC.Action(Info)'))
+
                 if imdb is not False:
                     sysimdb = urllib.quote_plus(str(imdb))
                     

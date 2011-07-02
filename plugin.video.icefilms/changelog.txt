@@ -1,3 +1,8 @@
+v1.0.10 (Saturday, 2 July 2011):
+  - add Movie Information context menu item
+  - more favourites fixes
+  - fix script error in lists containing items with missing IMDB IDs
+
 v1.0.9 (Saturday, 2 July 2011):
   - fix favourites
   - fix 2shared sources
