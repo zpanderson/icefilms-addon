@@ -1442,12 +1442,12 @@ def SOURCE(page, sources):
               'cap': ''
           }
 
-          sec = re.search("f\.lastChild\.value='([^']+)';", page).group(1)
-          t   = re.search('"&t=([^"]+)";', page).group(1)
+          sec = re.search("f\.lastChild\.value=\"([^']+)\",a", page).group(1)
+          t   = re.search('"&t=([^"]+)",', page).group(1)
 
           args['sec'] = sec
           args['t'] = t
-
+          
           cookie = re.search('<cookie>(.+?)</cookie>', page).group(1)
           print "saved cookie: %s" % cookie
 
