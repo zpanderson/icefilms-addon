@@ -1,3 +1,6 @@
+v1.0.11 (Thursday, 7 July 2011):
+  - update script to new movie list page
+
 v1.0.10 (Saturday, 2 July 2011):
   - add Movie Information context menu item
   - more favourites fixes
