@@ -19,4 +19,7 @@
     <string id="30300">Downloads folder:</string>
     <string id="30301">Create directory structures in downloads folder</string>
     <string id="30302">Delete incomplete downloads</string>
+    
+    <!-- ICEFILMS -->
+    <string id="30400">Icefilms Site URL:</string>
 </strings>
