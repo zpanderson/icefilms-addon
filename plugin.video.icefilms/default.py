@@ -20,8 +20,14 @@ from xgoogle.search import GoogleSearch
 from mega import megaroutines
 from metautils import metahandlers
 
+def getSiteURL():
+     ao = xbmcaddon.Addon(id='plugin.video.icefilms')
+     url = ao.getSetting('icefilms-url')
+     return url
+
 # global constants
-ICEFILMS_AJAX = 'http://www.icefilms.info/membersonly/components/com_iceplayer/video.phpAjaxResp.php'
+ICEFILMS_URL = getSiteURL()
+ICEFILMS_AJAX = ICEFILMS_URL+'membersonly/components/com_iceplayer/video.phpAjaxResp.php'
 ICEFILMS_REFERRER = 'http://www.icefilms.info'
 USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 
@@ -136,7 +142,7 @@ def handle_file(filename,getmode=''):
                print 'opening failed'
      
 #useful global strings:
-iceurl = 'http://www.icefilms.info/'
+iceurl = ICEFILMS_URL
 
 def openfile(filename):
      fh = open(filename, 'r')
@@ -365,6 +371,7 @@ def Startup_Routines(selfAddon):
 
      # Run the login startup routines
      LoginStartup(selfAddon)
+     
 
      # Run the container checking startup routines, if enable meta is set to true
      EnableMeta = selfAddon.getSetting('use-meta')
@@ -743,7 +750,7 @@ def RECENT(url):
                 for scraped in recadd:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)
     
@@ -756,7 +763,7 @@ def LATEST(url):
                 for scraped in latrel:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)
 
@@ -769,7 +776,7 @@ def WATCHINGNOW(url):
                 for scraped in watnow:
                         mirlinks=re.compile('href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)    
 
