@@ -19,4 +19,8 @@
         <setting id="use-special-structure" type="bool" label="30301" default="true"/>
         <setting id="delete-incomplete-downloads" type="bool" label="30302" default="true"/>
    </category>
+   
+      <category label="Icefilms">
+       <setting id="icefilms-url" type="text" label="30400" default="http://www.icefilms.info/" />
+   </category>
 </settings>
