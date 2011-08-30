@@ -1,3 +1,6 @@
+v1.0.12 (Monday, 29 August 2011):
+  - added new addon setting to specify url of icefilms site (wesada)
+
 v1.0.11 (Thursday, 7 July 2011):
   - update script to new movie list page
 
