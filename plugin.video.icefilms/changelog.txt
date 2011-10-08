@@ -1,3 +1,6 @@
+v1.0.13 (Saturday, 08 October 2011):
+  - fix for tv shows after site change
+
 v1.0.12 (Monday, 29 August 2011):
   - added new addon setting to specify url of icefilms site (wesada)
 
