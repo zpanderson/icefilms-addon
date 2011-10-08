@@ -1068,7 +1068,7 @@ def TVSEASONS(url):
         
         ep_list = str(BeautifulSoup(source).find("span", { "class" : "list" } ))
 
-        season_list=re.compile('<h4>(.+?)</h4>').findall(ep_list)
+        season_list=re.compile('<h3><a name="[0-9]"></a>(.+?)<a href="#">Top ...</a></h3>').findall(ep_list)
         listlength=len(season_list)
         for seasons in season_list:
              if FlattenSingleSeasons==True and listlength <= 1:             
@@ -1097,11 +1097,11 @@ def TVEPISODES(name,url=None,source=None):
          #name=str(name[0])
 
      #quick hack of source code to simplfy scraping.
-     source=re.sub('</span>','<h4>',source)
+     source=re.sub('</span>','<h3>',source)
 
      #get all the source under season heading.
      #Use .+?/h4> not .+?</h4> for The Daily Show et al to work.
-     match=re.compile('<h4>'+name+'.+?/h4>(.+?)<h4>').findall(source)
+     match=re.compile('<h3><a name="[0-9]+?"></a>'+name+'.+?/h3>(.+?)<h3>').findall(source)
      for seasonSRC in match:
         TVEPLINKS(seasonSRC)
 
