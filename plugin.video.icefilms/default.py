@@ -1068,7 +1068,7 @@ def TVSEASONS(url):
         
         ep_list = str(BeautifulSoup(source).find("span", { "class" : "list" } ))
 
-        season_list=re.compile('<h3><a name="[0-9]"></a>(.+?)<a href="#">Top ...</a></h3>').findall(ep_list)
+        season_list=re.compile('<h3><a name.+?></a>(.+?)<a.+?</a></h3>').findall(ep_list)
         listlength=len(season_list)
         for seasons in season_list:
              if FlattenSingleSeasons==True and listlength <= 1:             
