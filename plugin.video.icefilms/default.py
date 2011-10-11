@@ -345,7 +345,8 @@ def Zip_DL_and_Install(url,dbtype,installtype):
                     print 'zip already downloaded, attempting extraction'
 
                print '!!!!handling meta install!!!!'
-               install=metacontainers.Install_Icefilms_Container(translatedicedatapath,filepath,dbtype,installtype)
+               mc = metacontainers.MetaContainer()
+               install=mc.Install_Icefilms_Container(translatedicedatapath,filepath,dbtype,installtype)
                return install
 
 
@@ -2098,7 +2099,7 @@ def getMeta(scrape, mode):
 
     #add without metadata -- imdb is still passed for use with Add to Favourites
     if use_meta==False or meta_setting=='false':
-        for imdb_id,url,name in scrape:
+        for imdb_id,url,name, hits in scrape:
             name=CLEANUP(name)
             addDir(name,iceurl+url,mode,'',imdb='tt'+str(imdb_id))
             
