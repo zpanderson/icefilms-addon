@@ -1074,13 +1074,13 @@ def TVSEASONS(url):
              if FlattenSingleSeasons==True and listlength <= 1:             
 
                  #proceed straight to adding episodes.
-                 TVEPISODES(seasons,source=ep_list)
+                 TVEPISODES(seasons.strip(),source=ep_list)
              else:
                  #save episode page source code
                  save(handle_file('episodesrc'),ep_list)
 
                  #add season directories
-                 addDir(seasons,'',13,'') 
+                 addDir(seasons.strip(),'',13,'') 
 
 
 def TVEPISODES(name,url=None,source=None):
@@ -1144,7 +1144,10 @@ def LOADMIRRORS(url):
 
      # get and save videoname
      namematch=re.compile('''<span style="font-size:large;color:white;">(.+?)</span>''').findall(link)
-     save(videonamefile,namematch[0])
+     try:
+         save(videonamefile,namematch[0])
+     except:
+         pass
 
      # get and save description
      match2=re.compile('<th>Description:</th><td>(.+?)<').findall(link)
@@ -1610,7 +1613,7 @@ def WaitIf():
 def Get_Path(srcname,vidname):
      #get settings
      selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
-          
+     
      #get path for download
      mypath=os.path.normpath(str(selfAddon.getSetting('download-folder')))
 
@@ -1633,7 +1636,7 @@ def Get_Path(srcname,vidname):
 
           if SpecialDirs == 'true':
                mediapath=os.path.normpath(handle_file('mediapath','open'))
-               mediapath=os.path.join(initial_path,mediapath)              
+               mediapath=os.path.join(initial_path,mediapath)
                
                if not os.path.exists(mediapath):
                     os.makedirs(mediapath)
