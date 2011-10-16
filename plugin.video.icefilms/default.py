@@ -1214,7 +1214,7 @@ def LOADMIRRORS(url):
      match[0]=re.sub('%28','(',match[0])
      for url in match:
           mirrorpageurl = iceurl+'membersonly/components/com_iceplayer/'+url
-
+      
      mirror_page=GetURL(mirrorpageurl, save_cookie = True)
 
      # check for recaptcha
@@ -1610,6 +1610,12 @@ def WaitIf():
                #isice = re.search('.megaupload', currentvid)
                 xbmc.Player().stop()
 
+
+#Quick helper function used to strip characters that are invalid for Windows filenames/folders
+def Clean_Windows_String(string):
+     return re.sub('[^-a-zA-Z0-9_.()\\\ ]+', '',  string)
+
+
 def Get_Path(srcname,vidname):
      #get settings
      selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
@@ -1617,12 +1623,14 @@ def Get_Path(srcname,vidname):
      #get path for download
      mypath=os.path.normpath(str(selfAddon.getSetting('download-folder')))
 
+     vidname = Clean_Windows_String(vidname)
+     
      if os.path.exists(mypath):
 
           #if source is split into parts, attach part number to the videoname.
           if re.search('Part',srcname) is not None:
                srcname=(re.split('\|+', srcname))[-1]
-               vidname=vidname+' part'+((re.split('\ +', srcname))[-1])
+               vidname=vidname + ' part' + ((re.split('\ +', srcname))[-1])
                #add file extension
                vidname = vidname+'.avi'
           else:
@@ -1635,7 +1643,7 @@ def Get_Path(srcname,vidname):
           SpecialDirs=selfAddon.getSetting('use-special-structure')
 
           if SpecialDirs == 'true':
-               mediapath=os.path.normpath(handle_file('mediapath','open'))
+               mediapath=Clean_Windows_String(os.path.normpath(handle_file('mediapath','open')))
                mediapath=os.path.join(initial_path,mediapath)
                
                if not os.path.exists(mediapath):
