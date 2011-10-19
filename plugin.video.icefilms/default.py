@@ -36,7 +36,9 @@ USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/
 ICEFILMS_REFERRER = 'http://www.icefilms.info'
 
 #get path to me
-icepath=os.getcwd()
+xaddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+icepath = xaddon.getAddonInfo('path')
+
 
 #append lib directory
 sys.path.append( os.path.join( icepath, 'resources', 'lib' ) )
@@ -938,7 +940,7 @@ def TVSEASONS(url, imdb_id):
         
         ep_list = str(BeautifulSoup(source).find("span", { "class" : "list" } ))
 
-        season_list=re.compile('<h4>(.+?)</h4>').findall(ep_list)
+        season_list=re.compile('<h3><a name.+?></a>(.+?)<a.+?</a></h3>').findall(ep_list)
         listlength=len(season_list)
         if listlength > 0:
             metaget=metahandlers.MetaData(translatedicedatapath)
@@ -949,7 +951,7 @@ def TVSEASONS(url, imdb_id):
             if FlattenSingleSeasons==True and listlength <= 1:             
             
                 #proceed straight to adding episodes.
-                TVEPISODES(seasons,source=ep_list,imdb_id=''+str(imdb_id))
+                TVEPISODES(seasons.strip(),source=ep_list,imdb_id=''+str(imdb_id))
             else:
                 #save episode page source code
                 save(handle_file('episodesrc'),ep_list)
@@ -958,7 +960,7 @@ def TVSEASONS(url, imdb_id):
                 print cover_url
                 num = num + 1 
                 #add season directories
-                addDir(seasons,'',13,cover_url,imdb=''+str(imdb_id)) 
+                addDir(seasons.strip(),'',13,cover_url,imdb=''+str(imdb_id)) 
 
 
 def TVEPISODES(name,url=None,source=None,imdb_id=None):
@@ -976,11 +978,11 @@ def TVEPISODES(name,url=None,source=None,imdb_id=None):
         #name=str(name[0])
     
     #quick hack of source code to simplfy scraping.
-    source=re.sub('</span>','<h4>',source)
+    source=re.sub('</span>','<h3>',source)
     
     #get all the source under season heading.
     #Use .+?/h4> not .+?</h4> for The Daily Show et al to work.
-    match=re.compile('<h4>'+name+'.+?/h4>(.+?)<h4>').findall(source)
+    match=re.compile('<h3><a name="[0-9]+?"></a>'+name+'.+?/h3>(.+?)<h3>').findall(source)
     for seasonSRC in match:
         print "Season Source is " + name
         TVEPLINKS(seasonSRC, name, imdb_id)
@@ -1312,6 +1314,21 @@ def SOURCE(scrape):
           hide2shared = selfAddon.getSetting('hide-2shared')
           megapic=handle_file('megapic','')
           shared2pic=handle_file('shared2pic','')
+
+          args = {
+              'iqs': '',
+              'url': '',
+              'cap': ''
+          }
+
+          sec = re.search("f\.lastChild\.value=\"([^']+)\",a", page).group(1)
+          t = re.search('"&t=([^"]+)",', page).group(1)
+
+          args['sec'] = sec
+          args['t'] = t
+          
+          cookie = re.search('<cookie>(.+?)</cookie>', page).group(1)
+          print "saved cookie: %s" % cookie
 
           #create a list of numbers 1-21
           num = 1
@@ -2089,9 +2106,12 @@ def cleanUnicode(string):
 def getMeta(scrape, mode):
     #get settings
     selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
-    meta_path=os.path.join(translatedicedatapath,'meta_caches')
+    meta_path=os.path.join(translatedicedatapath,'meta_caches')  
     use_meta=os.path.exists(meta_path)
     meta_setting = selfAddon.getSetting('use-meta')
+    print 'USE META: %s' % use_meta
+    print 'META PATH: %s' % meta_path
+    print 'META SETTING: %s' % meta_setting
     #check settings over whether to display the number of episodes next to tv show name.
     show_num_of_eps=selfAddon.getSetting('display-show-eps')
     
@@ -2099,7 +2119,7 @@ def getMeta(scrape, mode):
 
     #add without metadata -- imdb is still passed for use with Add to Favourites
     if use_meta==False or meta_setting=='false':
-        for imdb_id,url,name, hits in scrape:
+        for imdb_id,url,name in scrape:
             name=CLEANUP(name)
             addDir(name,iceurl+url,mode,'',imdb='tt'+str(imdb_id))
             
