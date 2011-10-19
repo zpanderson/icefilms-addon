@@ -51,7 +51,6 @@ from metautils import metahandlers, metacontainers
 from cleaners import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
-from mega import megaroutines
 from metautils import metahandlers
 
 def getSiteURL():
@@ -69,7 +68,7 @@ USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/
 def xbmcpath(path,filename):
      translatedpath = os.path.join(xbmc.translatePath( path ), ''+filename+'')
      return translatedpath
-       
+  
 def Notify(typeq,title,message,times):
      #simplified way to call notifications. common notifications here.
      if title == '':
@@ -79,19 +78,22 @@ def Notify(typeq,title,message,times):
                times='5000'
           smallicon=handle_file('smallicon')
           xbmc.executebuiltin("XBMC.Notification("+title+","+message+","+times+","+smallicon+")")
-     if typeq == 'big':
+     elif typeq == 'big':
           dialog = xbmcgui.Dialog()
           dialog.ok(' '+title+' ', ' '+message+' ')
-     if typeq == 'megaalert1':
+     elif typeq == 'megaalert1':
           ip = xbmc.getIPAddress()
           title='Megaupload Alert for IP '+ip
           message="Either you've reached your daily download limit\n or your IP is already downloading a file."
           dialog = xbmcgui.Dialog()
           dialog.ok(' '+title+' ', ' '+message+' ')
-     if typeq == 'megaalert2':
+     elif typeq == 'megaalert2':
           ip = xbmc.getIPAddress()
           title='Megaupload Info for IP '+ip
           message="No problems! You have not reached your limit."
+          dialog = xbmcgui.Dialog()
+          dialog.ok(' '+title+' ', ' '+message+' ')
+     else:
           dialog = xbmcgui.Dialog()
           dialog.ok(' '+title+' ', ' '+message+' ')
 
@@ -204,8 +206,7 @@ def DLDirStartup(selfAddon):
   if SpecialDirs == 'true':
      mypath=str(selfAddon.getSetting('download-folder'))
 
-     if mypath != '' or mypath is not None:
- 
+     if mypath:
         if os.path.exists(mypath):
           initial_path=os.path.join(mypath,'Icefilms Downloaded Videos')
           tvpath=os.path.join(initial_path,'TV Shows')
@@ -281,6 +282,7 @@ def ContainerStartup(selfAddon):
 
      #define dl directory
      dlzips=os.path.join(translatedicedatapath,'downloaded meta zips')
+     print 'DLZIPS: %s' % dlzips
                
      try:
           thefiles=os.listdir(dlzips)
@@ -295,12 +297,14 @@ def ContainerStartup(selfAddon):
           print 'deleted unnecessary zip.'
 
      metapath=os.path.join(translatedicedatapath,'meta_caches')
+     print 'META PATH: %s' % metapath
 
      #delete the meta folder if there are no covers. (cleanup failed installs)
      if os.path.exists(metapath):
-          if not os.path.exists(os.path.join(metapath,'themoviedb','covers','tt0011130')):
+          if not os.path.exists(os.path.join(metapath,'movie','covers','tt0011130')):
                import shutil
                try:
+                    print 'Removing meta cache folder!!'
                     shutil.rmtree(metapath)
                except:
                     print 'Failed to delete meta folder'
@@ -812,7 +816,6 @@ def WATCHINGNOW(url):
                                 addDir(name,url,100,'',disablefav=True)    
 
 def SEARCH(url):
-<<<<<<< HEAD
     kb = xbmc.Keyboard('', 'Search Icefilms.info', False)
     kb.doModal()
     if (kb.isConfirmed()):
@@ -1016,7 +1019,7 @@ def TVINDEX(url):
     link=GetURL(url)
 
     #list scraper now tries to get number of episodes on icefilms for show. this only works in A-Z.
-    match=re.compile('<a name=i id=(.+?)></a><img class=star><a href=/(.+?)>(.+?)</a>(.+?)br>').findall(link)
+    match=re.compile('<a name=i id=(.+?)></a><img class=star><a href=/(.+?)>(.+?)</a>').findall(link)
 
     getMeta(match, 12)
     print 'TVindex loader'
@@ -1278,7 +1281,7 @@ def GETMIRRORS(url,link):
 # This scrapes the megaupload mirrors from the separate url used for the video frame.
 # It also displays them in an informative fashion to user.
 # Displays in three directory levels: HD / DVDRip etc , Source, PART
-     print "getting mirrors for: %s" % url
+    print "getting mirrors for: %s" % url
 
     #get settings
     selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
@@ -1306,7 +1309,6 @@ def GETMIRRORS(url,link):
     #get proper name of vid
     vidname=handle_file('videoname','open')
     mypath=Get_Path(name,vidname)
-    print 'MYPATH: ',mypath
     if mypath != 'path not set':
         if os.path.isfile(mypath) is True:
             localpic=handle_file('localpic','')
@@ -1373,7 +1375,7 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
           multiple_part = re.search('<p>Source #'+sourcenumber+':', scrap)
           
           if multiple_part is not None:
-               #print sourcestring+' has multiple parts'
+               print sourcestring+' has multiple parts'
                #get all text under source if it has multiple parts
                multi_part_source=re.compile('<p>Source #'+sourcenumber+': (.+?)PART 1(.+?)</i><p>').findall(scrap)
 
@@ -1390,17 +1392,17 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
                         if ismega is not None:
                               partname='Part '+partnum
                               fullname=sourcestring+' | MU | '+partname
-                              Add_Multi_Parts(fullname,fullurl,megapic)
-                    elif is2shared is not None and hide2shared == 'false':
-                         #print sourcestring+' is hosted by 2shared' 
-                         part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
-                         for url,name in part:
-                              #print 'scraped2shared: '+url
-                              fullurl='http://www.2shared.com/'+url
-                              #print '2sharedfullurl: '+fullurl
-                              partname='Part '+name
-                              fullname=sourcestring+' | 2S  | '+partname
-                              Add_Multi_Parts(fullname,url,shared2pic)
+                              Add_Multi_Parts(fullname,url,megapic)
+                        elif is2shared is not None and hide2shared == 'false':
+                             #print sourcestring+' is hosted by 2shared' 
+                             part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
+                             for url,name in part:
+                                  #print 'scraped2shared: '+url
+                                  fullurl='http://www.2shared.com/'+url
+                                  #print '2sharedfullurl: '+fullurl
+                                  partname='Part '+name
+                                  fullname=sourcestring+' | 2S  | '+partname
+                                  Add_Multi_Parts(fullname,url,shared2pic)
 
           # if source does not have multiple parts...
           elif multiple_part is None:
@@ -1639,7 +1641,7 @@ def Get_Path(srcname,vidname):
      selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
      
      #get path for download
-     mypath=os.path.normpath(str(selfAddon.getSetting('download-folder')))
+     mypath=str(selfAddon.getSetting('download-folder'))
 
      #clean video name of unwanted characters
      vidname = Clean_Windows_String(vidname)
@@ -1662,12 +1664,16 @@ def Get_Path(srcname,vidname):
           SpecialDirs=selfAddon.getSetting('use-special-structure')
 
           if SpecialDirs == 'true':
-               mediapath=os.path.normpath(handle_file('mediapath','open'))
-               mediapath = cleanFilename(mediapath, isPath=True)
+               mediapath=Clean_Windows_String(os.path.normpath(handle_file('mediapath','open')))
                mediapath=os.path.join(initial_path,mediapath)              
                
                if not os.path.exists(mediapath):
-                    os.makedirs(mediapath)
+                    try:
+                        os.makedirs(mediapath)
+                    except Exception, e:
+                        print 'Failed to create media path: %s' % mediapath
+                        print 'With error: %s' % e
+                        pass
                finalpath=os.path.join(mediapath,vidname)
                return finalpath
      
@@ -1819,8 +1825,6 @@ def Stream_Source(name,url):
 
 
 def Download_Source(name,url):
-
-<<<<<<< HEAD
     #get proper name of vid
     vidname=handle_file('videoname','open')
     
@@ -1830,8 +1834,7 @@ def Download_Source(name,url):
     selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
        
     if mypath == 'path not set':
-        Notify('Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','','')
-    
+        Notify('other', 'Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','')    
     else:
         if os.path.isfile(mypath) is True:
             Notify('Download Alert','The video you are trying to download already exists!','','')
@@ -1997,7 +2000,6 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
-<<<<<<< HEAD
 def addDir(name, url, mode, iconimage, metainfo=False, imdb=False, delfromfav=False, total=False, disablefav=False, searchMode=False):
     if xbmc_imported:
          meta = metainfo
@@ -2275,9 +2277,6 @@ def getMeta(scrape, mode):
     meta_path=os.path.join(translatedicedatapath,'meta_caches')  
     use_meta=os.path.exists(meta_path)
     meta_setting = selfAddon.getSetting('use-meta')
-    print 'USE META: %s' % use_meta
-    print 'META PATH: %s' % meta_path
-    print 'META SETTING: %s' % meta_setting
     #check settings over whether to display the number of episodes next to tv show name.
     show_num_of_eps=selfAddon.getSetting('display-show-eps')
     
@@ -2302,7 +2301,7 @@ def getMeta(scrape, mode):
                 num_of_eps=re.sub('isode','',num_of_eps)#turn Episode{s} into Ep(s)
                 ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps)
         elif mode == 12: # fix for tvshows with num of episodes disabled
-            for imdb_id,url,name,num_of_eps in scrape:
+            for imdb_id,url,name in scrape:
                 ADD_ITEM(metaget,imdb_id,url,name,mode)
         else:
             for imdb_id,url,name in scrape:
