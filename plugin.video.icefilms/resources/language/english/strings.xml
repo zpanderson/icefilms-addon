@@ -27,4 +27,8 @@
     <string id="30401">Movies View</string>
     <string id="30402">TV Shows View</string>
     <string id="30403">Episodes View</string>
+    
+    <!-- ICEFILMS -->
+    <string id="30400">Icefilms Site URL:</string>
+>>>>>>> stable
 </strings>

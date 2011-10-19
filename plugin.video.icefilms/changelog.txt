@@ -10,6 +10,33 @@ Special thanks to westcoast13 for joining the project and making this release po
   - fixed problems with special characters on windows filesystems
   - fixed favourites
   - added setting to display number of episodes on icefilms for a show
+v1.0.14 (Sunday, 09 October 2011):
+  - correct issues with Colbert Report, Daily Show and others not showing all seasons
+v1.0.13 (Saturday, 08 October 2011):
+  - fix for tv shows after site change
+
+v1.0.12 (Monday, 29 August 2011):
+  - added new addon setting to specify url of icefilms site (wesada)
+
+v1.0.11 (Thursday, 7 July 2011):
+  - update script to new movie list page
+
+v1.0.10 (Saturday, 2 July 2011):
+  - add Movie Information context menu item
+  - more favourites fixes
+  - fix script error in lists containing items with missing IMDB IDs
+
+v1.0.9 (Saturday, 2 July 2011):
+  - fix favourites
+  - fix 2shared sources
+
+v1.0.8 (Friday, 1 July 2011):
+  - fix broken sources introduced by IceFilms site update
+  - separate folders for TV and movie favourites
+
+v1.0.7 (Saturday, 4 June 2011):
+  - fix script errors introduced by IceFilms site update
+  - favourites fix
 
 v1.0.6 (Tuesday, 15 March 2011):
   - added source type art

@@ -16,13 +16,15 @@
 #    - (H) Create metacontainer with data for everything 
 #          BUT need to decide about db first
 #    - (H) fix the right path for the db
-# Quite convoluted code. Needs a good cleanup.
+# Quite convoluted code. Needs a good cleanup for v1.1.0
 
 #standard module imports
 import sys,os
 import time,re
 import urllib,urllib2,cookielib,base64
 import unicodedata
+import random
+import copy
 
 #necessary so that the metacontainers.py can use the scrapers
 try: import xbmc,xbmcplugin,xbmcgui,xbmcaddon
@@ -49,6 +51,20 @@ from metautils import metahandlers, metacontainers
 from cleaners import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
+from mega import megaroutines
+from metautils import metahandlers
+
+def getSiteURL():
+     ao = xbmcaddon.Addon(id='plugin.video.icefilms')
+     url = ao.getSetting('icefilms-url')
+     return url
+
+# global constants
+ICEFILMS_URL = getSiteURL()
+ICEFILMS_AJAX = ICEFILMS_URL+'membersonly/components/com_iceplayer/video.phpAjaxResp.php'
+ICEFILMS_REFERRER = 'http://www.icefilms.info'
+USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
+
 
 def xbmcpath(path,filename):
      translatedpath = os.path.join(xbmc.translatePath( path ), ''+filename+'')
@@ -79,7 +95,11 @@ def Notify(typeq,title,message,times):
           dialog = xbmcgui.Dialog()
           dialog.ok(' '+title+' ', ' '+message+' ')
 
-#paths etc need sorting out.
+addon = xbmcaddon.Addon(id='plugin.video.icefilms')
+#get path to me
+icepath = addon.getAddonInfo('path')
+
+#paths etc need sorting out. do for v1.1.0
 icedatapath = 'special://profile/addon_data/plugin.video.icefilms'
 metapath = icedatapath+'/mirror_page_meta_cache'
 downinfopath = icedatapath+'/downloadinfologs'
@@ -89,76 +109,75 @@ translatedicedatapath = xbmcpath(icedatapath,'')
 art = icepath+'/resources/art'
 
 def handle_file(filename,getmode=''):
-    #bad python code to add a get file routine.
-    if filename == 'captcha':
-        return_file = xbmcpath(icedatapath,'CaptchaChallenge.txt')
-    elif filename == 'mirror':
-        return_file = xbmcpath(icedatapath,'MirrorPageSource.txt')
-    elif filename == 'episodesrc':
-        return_file = xbmcpath(icedatapath,'EpisodePageSource.txt')
-    elif filename == 'pageurl':
-        return_file = xbmcpath(icedatapath,'PageURL.txt')
-    
-    elif filename == 'mediapath':
-        return_file = xbmcpath(downinfopath,'MediaPath.txt')
-    #extra thing to provide show name with year if going via episode list.
-    elif filename == 'mediatvshowname':
-        return_file = xbmcpath(downinfopath,'TVShowName.txt')
-    #extra thing to provide season name.
-    elif filename == 'mediatvseasonname':
-        return_file = xbmcpath(downinfopath,'TVSeasonName.txt')
-    
-    elif filename == 'videoname':
-        return_file = xbmcpath(metapath,'VideoName.txt')
-    elif filename == 'sourcename':
-        return_file = xbmcpath(metapath,'SourceName.txt')
-    elif filename == 'description':
-        return_file = xbmcpath(metapath,'Description.txt')
-    elif filename == 'poster':
-        return_file = xbmcpath(metapath,'Poster.txt')
-    elif filename == 'mpaa':
-        return_file = xbmcpath(metapath,'mpaa.txt')
-    elif filename == 'listpic':
-        return_file = xbmcpath(metapath,'listpic.txt')
-    
-    elif filename == 'smallicon':
-        return_file = xbmcpath(art,'smalltransparent2.png')
-    elif filename == 'homepage':
-        return_file = xbmcpath(art,'homepage.png')
-    elif filename == 'movies':
-        return_file = xbmcpath(art,'movies.png')
-    elif filename == 'music':
-        return_file = xbmcpath(art,'music.png')
-    elif filename == 'tvshows':
-        return_file = xbmcpath(art,'tvshows.png')
-    elif filename == 'movies_fav':
-        return_file = xbmcpath(art,'movies_fav.png')
-    elif filename == 'tvshows_fav':
-        return_file = xbmcpath(art,'tvshows_fav.png')
-    elif filename == 'other':
-        return_file = xbmcpath(art,'other.png')
-    elif filename == 'search':
-        return_file = xbmcpath(art,'search.png')
-    elif filename == 'standup':
-        return_file = xbmcpath(art,'standup.png')
-    elif filename == 'megapic':
-        return_file = xbmcpath(art,'megaupload.png')
-    elif filename == 'shared2pic':
-        return_file = xbmcpath(art,'2shared.png')
-    elif filename == 'localpic':
-        return_file = xbmcpath(art,'local_file.jpg')
+     #bad python code to add a get file routine.
+     if filename == 'captcha':
+          return_file = xbmcpath(icedatapath,'CaptchaChallenge.txt')
+     elif filename == 'mirror':
+          return_file = xbmcpath(icedatapath,'MirrorPageSource.txt')
+     elif filename == 'episodesrc':
+          return_file = xbmcpath(icedatapath,'EpisodePageSource.txt')
+     elif filename == 'pageurl':
+          return_file = xbmcpath(icedatapath,'PageURL.txt')
 
-    if getmode == '':
-        return return_file
-    if getmode == 'open':
-        try:
-            opened_return_file=openfile(return_file)
-            return opened_return_file
-        except:
-            print 'opening failed'
+     elif filename == 'mediapath':
+          return_file = xbmcpath(downinfopath,'MediaPath.txt')
+     #extra thing to provide show name with year if going via episode list.
+     elif filename == 'mediatvshowname':
+          return_file = xbmcpath(downinfopath,'TVShowName.txt')
+     #extra thing to provide season name.
+     elif filename == 'mediatvseasonname':
+          return_file = xbmcpath(downinfopath,'TVSeasonName.txt')
+
+     elif filename == 'videoname':
+          return_file = xbmcpath(metapath,'VideoName.txt')
+     elif filename == 'sourcename':
+          return_file = xbmcpath(metapath,'SourceName.txt')
+     elif filename == 'description':
+          return_file = xbmcpath(metapath,'Description.txt')
+     elif filename == 'poster':
+          return_file = xbmcpath(metapath,'Poster.txt')
+     elif filename == 'mpaa':
+          return_file = xbmcpath(metapath,'mpaa.txt')
+     elif filename == 'listpic':
+          return_file = xbmcpath(metapath,'listpic.txt')
+
+     elif filename == 'smallicon':
+          return_file = xbmcpath(art,'smalltransparent2.png')
+     elif filename == 'homepage':
+          return_file = xbmcpath(art,'homepage.png')
+     elif filename == 'movies':
+          return_file = xbmcpath(art,'movies.png')
+     elif filename == 'music':
+          return_file = xbmcpath(art,'music.png')
+     elif filename == 'tvshows':
+          return_file = xbmcpath(art,'tvshows.png')
+     elif filename == 'movies_fav':
+        return_file = xbmcpath(art,'movies_fav.png')
+     elif filename == 'tvshows_fav':
+        return_file = xbmcpath(art,'tvshows_fav.png')
+
+     elif filename == 'other':
+          return_file = xbmcpath(art,'other.png')
+     elif filename == 'search':
+          return_file = xbmcpath(art,'search.png')
+     elif filename == 'standup':
+          return_file = xbmcpath(art,'standup.png')
+     elif filename == 'megapic':
+          return_file = xbmcpath(art,'megaupload.png')
+     elif filename == 'shared2pic':
+          return_file = xbmcpath(art,'2shared.png')
+
+     if getmode == '':
+          return return_file
+     if getmode == 'open':
+          try:
+               opened_return_file=openfile(return_file)
+               return opened_return_file
+          except:
+               print 'opening failed'
      
 #useful global strings:
-iceurl = 'http://www.icefilms.info/'
+iceurl = ICEFILMS_URL
 
 def openfile(filename):
      fh = open(filename, 'r')
@@ -370,6 +389,7 @@ def Startup_Routines(selfAddon):
 
      # Run the login startup routines
      LoginStartup(selfAddon)
+     
 
      # Run the container checking startup routines, if enable meta is set to true
      EnableMeta = selfAddon.getSetting('use-meta')
@@ -489,18 +509,112 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                 #add all the items without meta
                 addDir(info[0],info[1],info[2],'',delfromfav=True)
 
-     
+def setView(content, viewType):
+    #get settings
+    selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+
+    # kept for reference only
+    #movies_view = selfAddon.getSetting('movies-view')
+    #tvshows_view = selfAddon.getSetting('tvshows-view')
+    #episodes_view = selfAddon.getSetting('episodes-view')
+
+    # set content type so library shows more views and info
+    xbmcplugin.setContent(int(sys.argv[1]), content)
+    if selfAddon.getSetting('auto-view') == 'true':
+        xbmc.executebuiltin("Container.SetViewMode(%s)" % selfAddon.getSetting(viewType) )
+
+    # set sort methods - probably we don't need all of them
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_UNSORTED )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_LABEL )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_VIDEO_RATING )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_DATE )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_PROGRAM_COUNT )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_VIDEO_RUNTIME )
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_GENRE )
+
 def FAVOURITES(url):
-    #Favourites folder.
-    
     #get necessary paths
     tvshows=handle_file('tvshows_fav','')
     movies=handle_file('movies_fav','')
-     
+
     addDir('TV Shows',iceurl,570,tvshows)
     addDir('Movies',iceurl,571,movies)
 
-                         
+#Movie Favourites folder.
+def MOVIE_FAVOURITES(url):
+    #get settings
+    selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+    favpath=os.path.join(translatedicedatapath,'Favourites')
+    moviefav=os.path.join(favpath,'Movies')
+    try:
+        moviedircontents=os.listdir(moviefav)
+    except:
+        moviedircontents=None
+
+    if moviedircontents == None:
+        Notify('big','No Movie Favourites Saved','To save a favourite press the C key on a movie or\n TV Show and select Add To Icefilms Favourites','')
+
+    else:
+        #add clear favourites entry - Not sure if we must put it here, cause it will mess up the sorting
+        #addExecute('* Clear Favourites Folder *',url,58,os.path.join(art,'deletefavs.png'))
+
+        #handler for all movie favourites
+        if moviedircontents is not None:
+            #get the necessary meta stuff
+            use_meta=os.path.exists(os.path.join(translatedicedatapath,'meta_caches'))
+            meta_setting = selfAddon.getSetting('use-meta')
+
+            #add without metadata -- imdb is still passed for use with Add to Favourites
+            if use_meta==False or meta_setting=='false':
+                addFavourites(False,moviefav,moviedircontents)
+
+            #add with metadata -- imdb is still passed for use with Add to Favourites
+            elif use_meta==True and meta_setting=='true':
+                addFavourites(True,moviefav,moviedircontents)
+        else:
+            print 'moviedircontents is none!'
+
+    # Enable library mode & set the right view for the content
+    setView('movies', 'movies-view')
+
+#TV Shows Favourites folder
+def TV_FAVOURITES(url):
+    #get settings
+    selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+    favpath=os.path.join(translatedicedatapath,'Favourites')
+    tvfav=os.path.join(favpath,'TV')
+    try:
+        tvdircontents=os.listdir(tvfav)
+    except:
+        tvdircontents=None
+
+    if tvdircontents == None:
+        Notify('big','No TV Favourites Saved','To save a favourite press the C key on a movie or\n TV Show and select Add To Icefilms Favourites','')
+
+    else:
+        #add clear favourites entry - Not sure if we must put it here, cause it will mess up the sorting
+        #addExecute('* Clear Favourites Folder *',url,58,os.path.join(art,'deletefavs.png'))
+
+        #handler for all tv favourites
+        if tvdircontents is not None:
+
+            #get the necessary meta stuff
+            use_meta=os.path.exists(os.path.join(translatedicedatapath,'meta_caches'))
+            meta_setting = selfAddon.getSetting('use-meta')
+
+            #add without metadata -- imdb is still passed for use with Add to Favourites
+            if use_meta==False or meta_setting=='false':
+                addFavourites(False,tvfav,tvdircontents)
+
+            #add with metadata -- imdb is still passed for use with Add to Favourites
+            elif use_meta==True and meta_setting=='true':
+                addFavourites(True,tvfav,tvdircontents)             
+        else:
+            print 'tvshows dircontents is none!'
+
+    # Enable library mode & set the right view for the content
+    setView('movies', 'tvshows-view')
+
 def URL_TYPE(url):
      #Check whether url is a tv episode list or movie/mirrorpage
      if url.startswith(iceurl+'ip'):
@@ -549,72 +663,69 @@ def METAFIXER(url):
      
      
 def ADD_TO_FAVOURITES(name,url,imdbnum):
-    #Creates a new text file in favourites folder. The text file is named after the items name, and contains the name, url and relevant mode.
-    
-    if name is not None and url is not None:
-    
-        #Set favourites path, and create it if it doesn't exist.
-        favpath=os.path.join(translatedicedatapath,'Favourites')
-        tvfav=os.path.join(favpath,'TV')
-        moviefav=os.path.join(favpath,'Movies')
-        
-        try:
-            os.makedirs(tvfav)
-        except:
-            pass
-        try:
-            os.makedirs(moviefav)
-        except:
-            pass
-        
-        #Check what kind of url it is and set themode and savepath (helpful for metadata) accordingly
-        
-        
-        #fix name and imdb number for Episode List entries in Search.
-        if imdbnum == 'nothing':
-            metafix=METAFIXER(url)
-            name=metafix[0]
-            imdbnum=metafix[1]
-        
-        
-        url_type=URL_TYPE(url)
-        
-        if url_type=='mirrors':
-            themode='100'
-            savepath=moviefav
-             
-        elif url_type=='episodes':
-            themode='12'
-            savepath=tvfav
-        
-        print 'NAME:',name,'URL:',url,'IMDB NUMBER:',imdbnum
-        
-        #Delete HD entry from filename. using name as filename makes favourites appear alphabetically.
-        adjustedname=cleanFilename( re.sub(' *HD*','', name) )
-        
-        #encode the filename to the safe string *** to check ***
-        #adjustedname=base64.urlsafe_b64encode(name)
-        
-        #Save the new favourite if it does not exist.
-        NewFavFile=os.path.join(savepath,adjustedname+'.txt')
-        if not os.path.exists(NewFavFile):
-        
-            #Use | as separators that can be used by re.split when reading favourites folder.
-            favcontents=name+'|'+url+'|'+themode+'|'+imdbnum
-            save(NewFavFile,favcontents)
-        else:
-            print 'favourite already exists'
-    
-    else:
-        print 'name or url is none:'
-        print 'NAME: ',name
-        print 'URL: ',url
+     #Creates a new text file in favourites folder. The text file is named after the items name, and contains the name, url and relevant mode.
+     print 'Adding to favourites: name: %s, imdbnum: %s, url: %s' % (name, imdbnum, url)
 
+     if name is not None and url is not None:
+
+          #Set favourites path, and create it if it does'nt exist.
+          favpath=os.path.join(translatedicedatapath,'Favourites')
+          tvfav=os.path.join(favpath,'TV')
+          moviefav=os.path.join(favpath,'Movies')
+          
+          try:
+               os.makedirs(tvfav)
+          except:
+               pass
+          try:
+               os.makedirs(moviefav)
+          except:
+               pass
+
+          #Check what kind of url it is and set themode and savepath (helpful for metadata) accordingly
+          
+
+          #fix name and imdb number for Episode List entries in Search.
+          if imdbnum == 'nothing':
+               metafix=METAFIXER(url)
+               name=metafix[0]
+               imdbnum=metafix[1]
+
+          
+          url_type=URL_TYPE(url)
+
+          if url_type=='mirrors':
+               themode='100'
+               savepath=moviefav
+               
+          elif url_type=='episodes':
+               themode='12'
+               savepath=tvfav
+
+          print 'NAME:',name,'URL:',url,'IMDB NUMBER:',imdbnum
+
+          #encode the filename to the safe string
+          adjustedname=base64.urlsafe_b64encode(name)
+
+          #Save the new favourite if it does not exist.
+          NewFavFile=os.path.join(savepath,adjustedname+'.txt')
+          if not os.path.exists(NewFavFile):
+
+               #Use | as separators that can be used by re.split when reading favourites folder.
+               favcontents=name+'|'+url+'|'+themode+'|'+imdbnum
+               save(NewFavFile,favcontents)
+          else:
+               print 'favourite already exists'
+
+     else:
+          print 'name or url is none:'
+          print 'NAME: ',name
+          print 'URL: ',url
 
      
 def DELETE_FROM_FAVOURITES(name,url):
     #Deletes HD entry from filename
-    name=cleanFilename( re.sub(' *HD*','', name) )
+    name=Clean_Windows_String( re.sub(' *HD*','', name) )
     #encode the filename to the safe string *** to check ***
     #name=base64.urlsafe_b64encode(name)
     
@@ -670,7 +781,7 @@ def RECENT(url):
                 for scraped in recadd:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)
     
@@ -683,7 +794,7 @@ def LATEST(url):
                 for scraped in latrel:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)
 
@@ -696,11 +807,12 @@ def WATCHINGNOW(url):
                 for scraped in watnow:
                         mirlinks=re.compile('href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
-                                url='http://www.icefilms.info'+url
+                                url=iceurl+url
                                 name=CLEANUP(name)
                                 addDir(name,url,100,'',disablefav=True)    
 
 def SEARCH(url):
+<<<<<<< HEAD
     kb = xbmc.Keyboard('', 'Search Icefilms.info', False)
     kb.doModal()
     if (kb.isConfirmed()):
@@ -724,8 +836,7 @@ def SEARCH(url):
             try:
                 os.remove(seasonname)
             except:
-                pass
-               
+                pass               
                                
 def DoSearch(search,page):        
         gs = GoogleSearch('site:http://www.icefilms.info/ip '+search+'')
@@ -843,7 +954,9 @@ def MOVIEA2ZDirectories(url):
         caturl = iceurl+'movies/a-z/'
         
         #Generate A-Z list and add directories for all letters.
-        A2Z=[chr(i) for i in xrange(ord('A'), ord('Z')+1)]
+        A2Z=[chr(i) for i in xrange(ord('a'), ord('z')+1)]
+        for theletter in A2Z:
+             addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
 
         if xbmc_imported:
              #Add number directory
@@ -1030,7 +1143,10 @@ def LOADMIRRORS(url):
 
      # get and save videoname
      namematch=re.compile('''<span style="font-size:large;color:white;">(.+?)</span>''').findall(link)
-     save(videonamefile,namematch[0])
+     try:
+         save(videonamefile,namematch[0])
+     except:
+         pass
 
      # get and save description
      match2=re.compile('<th>Description:</th><td>(.+?)<').findall(link)
@@ -1095,17 +1211,18 @@ def LOADMIRRORS(url):
      match=re.compile('/membersonly/components/com_iceplayer/(.+?)" width=').findall(link)
      match[0]=re.sub('%29',')',match[0])
      match[0]=re.sub('%28','(',match[0])
-     mirrorpageurl = iceurl+'membersonly/components/com_iceplayer/'+match[0]
+     for url in match:
+          mirrorpageurl = iceurl+'membersonly/components/com_iceplayer/'+url
+      
+     mirror_page=GetURL(mirrorpageurl, save_cookie = True)
 
-     mlink=GetURL(mirrorpageurl)
+     # check for recaptcha
+     has_recaptcha = check_for_captcha(mirror_page)
 
-     #check for recaptcha
-     has_recaptcha = check_for_captcha(mlink)
-
-     if has_recaptcha:
+     if has_recaptcha is False:
+          GETMIRRORS(mirrorpageurl,mirror_page)
+     elif has_recaptcha is True:
           RECAPTCHA(mirrorpageurl)
-     else:
-          GETMIRRORS(mirrorpageurl,mlink)
 
 def check_for_captcha(source):
      #check for recaptcha in the page source, and return true or false.
@@ -1120,6 +1237,7 @@ def RECAPTCHA(url):
      print 'initiating recaptcha passthrough'
      source = GetURL(url)
      match = re.compile('<iframe src="http://www.google.com/recaptcha/api/noscript\?k\=(.+?)" height').findall(source)
+
      for token in match:
           surl = 'http://www.google.com/recaptcha/api/challenge?k=' + token
      tokenlink=GetURL(surl)
@@ -1160,6 +1278,7 @@ def GETMIRRORS(url,link):
 # This scrapes the megaupload mirrors from the separate url used for the video frame.
 # It also displays them in an informative fashion to user.
 # Displays in three directory levels: HD / DVDRip etc , Source, PART
+     print "getting mirrors for: %s" % url
 
     #get settings
     selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
@@ -1218,7 +1337,6 @@ def GETMIRRORS(url,link):
     elif FlattenSrcType == 'false':
          addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6)
 
-
                 
 def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
         if dvdrip == 1:
@@ -1242,7 +1360,7 @@ def Add_Multi_Parts(name,url,icon):
 
 
 
-def PART(scrap,sourcenumber,hide2shared,megapic,shared2pic):
+def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
      #check if source exists
      sourcestring='Source #'+sourcenumber
      checkforsource = re.search(sourcestring, scrap)
@@ -1262,18 +1380,15 @@ def PART(scrap,sourcenumber,hide2shared,megapic,shared2pic):
                #put scrape back together
                for sourcescrape1,sourcescrape2 in multi_part_source:
                     scrape=sourcescrape1+'PART 1'+sourcescrape2
+                    pair = re.compile("onclick='go\((\d+)\)'>PART\s+(\d+)").findall(scrape)
+                    for id, partnum in pair:
+                        url = GetSource(id, args, cookie)
+                        # check if source is megaupload or 2shared, and add all parts as links
+                        ismega = re.search('\.megaupload\.com/', url)
+                        is2shared = re.search('\.2shared\.com/', url)
 
-                    #check if source is megaupload or 2shared, and add all parts as links
-                    ismega = re.search('.megaupload.com/', scrape)
-                    is2shared = re.search('.2shared.com/', scrape)
-                    if ismega is not None:
-                         #print sourcestring+' is hosted by megaupload'
-                         part=re.compile('&url=http://www.megaupload.com/?(.+?)>PART (.+?)</a>').findall(scrape)
-                         for url,name in part:
-                              #print 'scrapedmegaurl: '+url
-                              fullurl='http://www.megaupload.com/'+url
-                              #print 'megafullurl: '+fullurl
-                              partname='Part '+name
+                        if ismega is not None:
+                              partname='Part '+partnum
                               fullname=sourcestring+' | MU | '+partname
                               Add_Multi_Parts(fullname,fullurl,megapic)
                     elif is2shared is not None and hide2shared == 'false':
@@ -1285,19 +1400,20 @@ def PART(scrap,sourcenumber,hide2shared,megapic,shared2pic):
                               #print '2sharedfullurl: '+fullurl
                               partname='Part '+name
                               fullname=sourcestring+' | 2S  | '+partname
-                              Add_Multi_Parts(fullname,fullurl,shared2pic) 
+                              Add_Multi_Parts(fullname,url,shared2pic)
 
-          #if source does not have multiple parts...
+          # if source does not have multiple parts...
           elif multiple_part is None:
-               #print sourcestring+' is single part'
-               #find corresponding '<a rel=?' entry and add as a one-link source
-               source5=re.compile('<a rel='+sourcenumber+'.+?&url=(.+?)>Source #'+sourcenumber+':').findall(scrap)
-               #print source5
-               for url in source5:
-                    ismega = re.search('.megaupload.com/', url)
-                    is2shared = re.search('.2shared.com/', url)
+               # print sourcestring+' is single part'
+               # find corresponding '<a rel=?' entry and add as a one-link source
+               source5=re.compile('<a\s+rel='+sourcenumber+'.+?onclick=\'go\((\d+)\)\'>Source\s+#'+sourcenumber+':').findall(scrap)
+               # print source5
+               for id in source5:
+                    url = GetSource(id, args, cookie)
+                    ismega = re.search('\.megaupload\.com/', url)
+                    is2shared = re.search('\.2shared\.com/', url)
                     if ismega is not None:
-                         #print 'Source #'+sourcenumber+' is hosted by megaupload'
+                         # print 'Source #'+sourcenumber+' is hosted by megaupload'
                          fullname=sourcestring+' | MU | Full'
                          addExecute(fullname,url,200,megapic)
                     elif is2shared is not None and hide2shared == 'false':
@@ -1306,14 +1422,44 @@ def PART(scrap,sourcenumber,hide2shared,megapic,shared2pic):
                          addExecute(fullname,url,200,shared2pic)
 
 
-def SOURCE(scrape):
-#check for sources containing multiple parts or just one part
-          #get settings
+def GetSource(id, args, cookie):
+    m = random.randrange(100, 300) * -1
+    s = random.randrange(5, 50)
+    params = copy.copy(args)
+    params['id'] = id
+    params['m'] = m
+    params['s'] = s
+    paramsenc = urllib.urlencode(params)
+    body = GetURL(ICEFILMS_AJAX, params = paramsenc, cookie = cookie)
+    print 'response: %s' % body
+    source = re.search('url=(http[^&]+)', body).group(1)
+    url = urllib.unquote(source)
+    print 'url: %s' % url
+    return url
+
+def SOURCE(page, sources):
+          # check for sources containing multiple parts or just one part
+          # get settings
           selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
-          
           hide2shared = selfAddon.getSetting('hide-2shared')
           megapic=handle_file('megapic','')
           shared2pic=handle_file('shared2pic','')
+
+          # extract the ingredients used to generate the XHR request
+          #
+          # set here:
+          #
+          #     iqs: not used?
+          #     url: not used?
+          #     cap: form field for recaptcha? - always set to empty in the JS
+          #     sec: secret identifier: hardwired in the JS
+          #     t:   token: hardwired in the JS
+          #
+          # set in GetSource:
+          #
+          #     m:   starts at 0, decremented each time a mousemove event is fired e.g. -123
+          #     s:   seconds since page loaded (> 5, < 250)
+          #     id:  source ID in the link's onclick attribute (extracted in PART)
 
           args = {
               'iqs': '',
@@ -1330,7 +1476,7 @@ def SOURCE(scrape):
           cookie = re.search('<cookie>(.+?)</cookie>', page).group(1)
           print "saved cookie: %s" % cookie
 
-          #create a list of numbers 1-21
+          # create a list of numbers: 1-21
           num = 1
           numlist = list('1')
           while num < 21:
@@ -1338,10 +1484,11 @@ def SOURCE(scrape):
               numlist.append(str(num))
 
           #for every number, run PART.
-          #The first thing PART does is check whether that number source exists in the page source code...
-          #...so it's not as CPU intensive as you might think.    
-          for thenumber in numlist: 
-               PART(scrape,thenumber,hide2shared,megapic,shared2pic)
+          #The first thing PART does is check whether that number source exists...
+          #...so it's not as CPU intensive as you might think.
+
+          for thenumber in numlist:
+               PART(sources,thenumber,args,cookie,hide2shared,megapic,shared2pic)
 
            
 def DVDRip(url):
@@ -1349,28 +1496,28 @@ def DVDRip(url):
 #string for all text under standard def border
         defcat=re.compile('<div class=ripdiv><b>DVDRip / Standard Def</b>(.+?)</div>').findall(link)
         for scrape in defcat:
-                SOURCE(scrape)
+                SOURCE(link, scrape)
 
 def HD720p(url):
         link=handle_file('mirror','open')
 #string for all text under hd720p border
         defcat=re.compile('<div class=ripdiv><b>HD 720p</b>(.+?)</div>').findall(link)
         for scrape in defcat:
-                SOURCE(scrape)
+                SOURCE(link, scrape)
 
 def DVDScreener(url):
         link=handle_file('mirror','open')
 #string for all text under dvd screener border
         defcat=re.compile('<div class=ripdiv><b>DVD Screener</b>(.+?)</div>').findall(link)
         for scrape in defcat:
-                SOURCE(scrape)
+                SOURCE(link, scrape)
 
 def R5R6(url):
         link=handle_file('mirror','open')
 #string for all text under r5/r6 border
         defcat=re.compile('<div class=ripdiv><b>R5/R6 DVDRip</b>(.+?)</div>').findall(link)
         for scrape in defcat:
-                SOURCE(scrape)
+                SOURCE(link, scrape)
 
 class TwoSharedDownloader:
      
@@ -1416,7 +1563,7 @@ def SHARED2_HANDLER(url):
           #vidFile = TwoSharedDownloader.returnLink(url)
           
           print str(vodFile)
-          match=re.compile('http\:\/\/(.+?).dc1').findall(vidFile)
+          match=re.compile('http\:\/\/(.+?)\.dc1').findall(vidFile)
           for urlbulk in match:
                finalurl='http://'+urlbulk+'.avi'
                print '2Shared Direct Link: '+finalurl
@@ -1433,23 +1580,44 @@ def SHARED2_HANDLER(url):
           #for surl in dirlink:
           #    return surl
 
-def GetURL(url, params = None, referrer = ICEFILMS_REFERRER):
-     # print 'processing url: ' + url
-     req = urllib2.Request(url)
+
+def GetURL(url, params = None, referrer = ICEFILMS_REFERRER, cookie = None, save_cookie = False):
+     # print 'GetUrl: ' + url
+     # print 'params: ' + repr(params)
+     # print 'referrer: ' + repr(referrer)
+     # print 'cookie: ' + repr(cookie)
+     # print 'save_cookie: ' + repr(save_cookie)
+
+     if params:
+        req = urllib2.Request(url, params)
+        # req.add_header('Content-type', 'application/x-www-form-urlencoded')
+     else:
+         req = urllib2.Request(url)
+
      req.add_header('User-Agent', USER_AGENT)
+
      # as of 2011-06-02, IceFilms sources aren't displayed unless a valid referrer header is supplied:
      # http://forum.xbmc.org/showpost.php?p=810288&postcount=1146
      if referrer:
          req.add_header('Referer', referrer)
+
+     if cookie:
+         req.add_header('Cookie', cookie)
+
      # avoid Python >= 2.5 ternary operator for backwards compatibility
      # http://wiki.xbmc.org/index.php?title=Python_Development#Version
-     if params:
-        response = urllib2.urlopen(req, params)
-     else:
-        response = urllib2.urlopen(req)
-     source = response.read()
+     response = urllib2.urlopen(req)
+     body = response.read()
+
+     if save_cookie:
+         setcookie = response.info().get('Set-Cookie', None)
+         print "Set-Cookie: %s" % repr(setcookie)
+         if setcookie:
+             setcookie = re.search('([^=]+=[^=;]+)', setcookie).group(1)
+             body = body + '<cookie>' + setcookie + '</cookie>'
+
      response.close()
-     return source
+     return body
 
 def WaitIf():
      #killing playback is necessary if switching playing of one megaup/2share stream to another
@@ -1458,33 +1626,30 @@ def WaitIf():
                #isice = re.search('.megaupload', currentvid)
                 xbmc.Player().stop()
 
-def cleanFilename(file, isPath=False):
-    #Clean filename of not os allowed characters (replace with '_'
-    file=file.replace(':','_').replace('<','_').replace('>','_').replace('*','_').replace('"','_').replace('|','_').replace('?','_')
-    # if this isn't a path clean special path characters too
-    if isPath == False:
-        file=file.replace('/','_').replace('\\','_')
-    print file
-    
-    return file
+
+#Quick helper function used to strip characters that are invalid for Windows filenames/folders
+def Clean_Windows_String(string):
+     return re.sub('[^-a-zA-Z0-9_.()\\\ ]+', '',  string)
+
 
 def Get_Path(srcname,vidname):
      ##Gets the path the file will be downloaded to, and if necessary makes the folders##
      
      #get settings
      selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
-          
+     
      #get path for download
      mypath=os.path.normpath(str(selfAddon.getSetting('download-folder')))
-     
+
      #clean video name of unwanted characters
-     vidname = cleanFilename(vidname)
+     vidname = Clean_Windows_String(vidname)
+    
      if os.path.exists(mypath):
 
           #if source is split into parts, attach part number to the videoname.
           if re.search('Part',srcname) is not None:
                srcname=(re.split('\|+', srcname))[-1]
-               vidname=vidname+' part'+((re.split('\ +', srcname))[-1])
+               vidname=vidname + ' part' + ((re.split('\ +', srcname))[-1])
                #add file extension
                vidname = vidname+'.avi'
           else:
@@ -1608,8 +1773,8 @@ def handle_wait(time_to_wait,title,text):
 
 def Handle_Vidlink(url):
      #video link preflight, pays attention to settings / checks if url is mega or 2shared
-     ismega = re.search('.megaupload.com/', url)
-     is2shared = re.search('.2shared.com/', url)
+     ismega = re.search('\.megaupload\.com/', url)
+     is2shared = re.search('\.2shared\.com/', url)
      
      if ismega is not None:
           WaitIf()
@@ -1625,8 +1790,8 @@ def Handle_Vidlink(url):
                return None
 
      elif is2shared is not None:
-          return False
           Notify('big','2Shared','2Shared is not supported by this addon. (Yet)','')
+          return False
           #shared2url=SHARED2_HANDLER(url)
           #return shared2url
 
@@ -1655,6 +1820,7 @@ def Stream_Source(name,url):
 
 def Download_Source(name,url):
 
+<<<<<<< HEAD
     #get proper name of vid
     vidname=handle_file('videoname','open')
     
@@ -1663,7 +1829,6 @@ def Download_Source(name,url):
     #get settings
     selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
        
-    print 'MYPATH: ',mypath
     if mypath == 'path not set':
         Notify('Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','','')
     
@@ -1832,6 +1997,7 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
+<<<<<<< HEAD
 def addDir(name, url, mode, iconimage, metainfo=False, imdb=False, delfromfav=False, total=False, disablefav=False, searchMode=False):
     if xbmc_imported:
          meta = metainfo
