@@ -1,9 +1,9 @@
 <strings>
     <!-- MENUS -->
-    <string id="30100">Hide homepage</string>
-    <string id="30101">Enable MetaData</string>
-    <string id="30102">Flatten TV Shows with single seasons</string>
-    <string id="30103">Flatten source type for single type videos</string>
+    <string id="30100">Icefilms Site URL:</string>
+    <string id="30101">Hide homepage</string>
+    <string id="30103">Flatten TV Shows with single seasons</string>
+    <string id="30104">Flatten source type for single type videos</string>
     <string id="30105">Hide 2Shared sources</string>
     <string id="30106">Autoplay next part of source when streaming</string>
     <string id="30107">In TV A-Z display number of episodes per show</string>
@@ -28,7 +28,10 @@
     <string id="30402">TV Shows View</string>
     <string id="30403">Episodes View</string>
     
-    <!-- ICEFILMS -->
-    <string id="30500">Icefilms Site URL:</string>
+    <!-- Meta Data -->
+    <string id="30600">Enable MetaData</string>
+    <string id="30601">    Show Movie Fanart</string>
+    <string id="30602">    Show TV Show Fanart</string>    
+    
 >>>>>>> stable
 </strings>
