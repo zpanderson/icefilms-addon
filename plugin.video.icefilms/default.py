@@ -1,18 +1,18 @@
 #!/usr/bin/python
 
-#Icefilms.info v1.1.0 Draft - anarchintosh / daledude / WestCoast13 19/3/2011
+#Icefilms.info v1.1.0 - anarchintosh / daledude / WestCoast13 / Eldorado
 
 #All code Copyleft (GNU GPL v2) Anarchintosh and icefilms-xbmc team
 
 # Still to-do (Low/Normal/High priority): 
-#    - (N) refresh for episodes & seasons
-#    - (L) trailer search by youtube api
 #    - (L) Quiet download. Have already tried with AddonScan 
 #          in back & it works although sometimes it hangs. Needs proper testing.
 #    - (L) Automatically watched status 
 #    - (H) Create metacontainer with data for everything 
 # Quite convoluted code. Needs a good cleanup for v1.1.0
 
+
+############### Imports ############################
 #standard module imports
 import sys,os
 import time,re
@@ -29,8 +29,8 @@ else:
      xbmc_imported = True
 
 #get path to me
-xaddon = xbmcaddon.Addon(id='plugin.video.icefilms')
-icepath = xaddon.getAddonInfo('path')
+selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+icepath = selfAddon.getAddonInfo('path')
 
 #append lib directory
 sys.path.append( os.path.join( icepath, 'resources', 'lib' ) )
@@ -42,17 +42,16 @@ from cleaners import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
 
+####################################################
+
+############## Constants / Variables ###############
+
 # global constants
 USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 ICEFILMS_REFERRER = 'http://www.icefilms.info'
 
-def getSiteURL():
-     ao = xbmcaddon.Addon(id='plugin.video.icefilms')
-     url = ao.getSetting('icefilms-url')
-     return url
-
 # global constants
-ICEFILMS_URL = getSiteURL()
+ICEFILMS_URL = selfAddon.getSetting('icefilms-url')
 ICEFILMS_AJAX = ICEFILMS_URL+'membersonly/components/com_iceplayer/video.phpAjaxResp.php'
 ICEFILMS_REFERRER = 'http://www.icefilms.info'
 USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
@@ -60,8 +59,9 @@ USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/
 #useful global strings:
 iceurl = ICEFILMS_URL
 meta_installed = True
-selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
 meta_setting = selfAddon.getSetting('use-meta')
+
+####################################################
 
 def xbmcpath(path,filename):
      translatedpath = os.path.join(xbmc.translatePath( path ), ''+filename+'')
@@ -104,7 +104,6 @@ icedatapath = 'special://profile/addon_data/plugin.video.icefilms'
 metapath = icedatapath+'/mirror_page_meta_cache'
 downinfopath = icedatapath+'/downloadinfologs'
 transdowninfopath = xbmcpath(downinfopath,'')
-transmetapath = xbmcpath(icedatapath+'/meta_cache','')
 translatedicedatapath = xbmcpath(icedatapath,'')
 art = icepath+'/resources/art'
 
@@ -375,7 +374,6 @@ def Startup_Routines():
      
      # avoid error on first run if no paths exists, by creating paths
      if not os.path.exists(translatedicedatapath): os.makedirs(translatedicedatapath)
-     if not os.path.exists(transmetapath): os.makedirs(transmetapath)
      if not os.path.exists(transdowninfopath): os.makedirs(transdowninfopath)
 
      dlzips=os.path.join(translatedicedatapath,'downloaded meta zips')
@@ -1997,8 +1995,10 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
 
          else:
              
-             liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])
-                                      
+             movie_fanart = selfAddon.getSetting('movies-fanart')
+             tvshow_fanart = selfAddon.getSetting('tvshows-fanart')
+             
+             liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])                                        
              
              # mark as watched or unwatched 
              addWatched = False
@@ -2008,6 +2008,8 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              if mode == 12: # TV series
                  addWatched = True
                  videoType = 'tvshow'
+                 if tvshow_fanart == 'true':
+                     liz.setProperty('fanart_image', meta['backdrop_url'])
                  if searchMode == False:
                      contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
              elif meta.has_key('season') and not meta.has_key('episode'):
@@ -2026,6 +2028,8 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              elif mode == 100: # movies
                  addWatched = True
                  videoType = 'movie'
+                 if movie_fanart == 'true':
+                     liz.setProperty('fanart_image', meta['backdrop_url'])                 
                  if searchMode == False:
                      contextMenuItems.append(('Movie Information', 'XBMC.Action(Info)'))
 
