@@ -1,13 +1,12 @@
 <settings>
    <category label="Menus">
-    <setting id="hide-homepage" type="bool" label="30100" default="false"/>
-  	<setting id="use-meta" type="bool" label="30101" default="true"/>       
-  	<setting id="flatten-single-season" type="bool" label="30102" default="true"/>
-  	<setting id="flatten-source-type" type="bool" label="30103" default="true"/>
+   	<setting id="icefilms-url" type="text" label="30100" default="http://www.icefilms.info/" />
+    <setting id="hide-homepage" type="bool" label="30101" default="false"/>
+  	<setting id="flatten-single-season" type="bool" label="30103" default="true"/>
+  	<setting id="flatten-source-type" type="bool" label="30104" default="true"/>
   	<setting id="hide-2shared" type="bool" label="30105" default="true"/>
-  	<setting id="stack-multi-part" type="bool" label="30106" default="true" visible="false"/>
-        
-	<setting id="display-show-eps" type="bool" label="30107" default="false" visible="false"/>
+  	<setting id="stack-multi-part" type="bool" label="30106" default="true" visible="false"/>      
+	  <setting id="display-show-eps" type="bool" label="30107" default="false" visible="false"/>
    </category>
    <category label="Megaupload">
 	<setting id="megaupload-account" type="bool" label="30200" default="false"/>
@@ -15,6 +14,11 @@
 	<setting id="megaupload-password" type="text" label="30202" default="" option="hidden" enable="!eq(-2,false)"/>
 	<setting id="hide-successful-login-messages" type="bool" label="30203" default="false" enable="!eq(-3,false)"/>
     <setting id="prefer-megavideo" type="bool" label="30204" default="false" visible="false"/>
+   </category>
+   <category label="Meta Data">
+  	<setting id="use-meta" type="bool" label="30600" default="true"/>
+	  <setting id="movies-fanart" type="bool" label="30601" default="false" enable="!eq(-1,false)"/>
+	  <setting id="tvshows-fanart" type="bool" label="30602" default="false" enable="!eq(-2,false)"/>
    </category>
    <category label="Downloads">
     <setting id="download-folder" type="folder" label="30300" default=""/>
@@ -30,9 +34,5 @@
 	<setting id="movies-view" type="number" label="30401" default="503" enable="!eq(-1,false)"/>
 	<setting id="tvshows-view" type="number" label="30402" default="503" enable="!eq(-2,false)"/>
 	<setting id="episodes-view" type="number" label="30403" default="504" enable="!eq(-3,false)"/>
-   </category>
-   
-      <category label="Icefilms">
-       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
    </category>
 </settings>
