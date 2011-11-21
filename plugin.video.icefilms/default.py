@@ -29,7 +29,8 @@ else:
      xbmc_imported = True
 
 #get path to me
-selfAddon = xbmcaddon.Addon(id='plugin.video.icefilms')
+addon_id = 'plugin.video.icefilms'
+selfAddon = xbmcaddon.Addon(id=addon_id)
 icepath = selfAddon.getAddonInfo('path')
 
 #append lib directory
@@ -94,10 +95,6 @@ def Notify(typeq,title,message,times):
      else:
           dialog = xbmcgui.Dialog()
           dialog.ok(' '+title+' ', ' '+message+' ')
-
-addon = xbmcaddon.Addon(id='plugin.video.icefilms')
-#get path to me
-icepath = addon.getAddonInfo('path')
 
 #paths etc need sorting out. do for v1.1.0
 icedatapath = 'special://profile/addon_data/plugin.video.icefilms'
@@ -270,104 +267,71 @@ def LoginStartup():
                                 
 def ContainerStartup():
 
-     #delete zips from the 'downloaded meta zips' dir that have equivalent text files.
-     #have to do this at startup because it is not possible to delete the original file
-     #after extracting, because the file is extracted by a built in xbmc function not python
-     # (python won't wait until file has finished extracting before going on to run next lines)
-
-     #define dl directory
-     dlzips=os.path.join(translatedicedatapath,'downloaded meta zips')
-     print 'DLZIPS: %s' % dlzips
-               
-     try:
-          thefiles=os.listdir(dlzips)
-          for thefile in thefiles:
-               filestring=str(thefile)
-               if filestring.endswith('.txt'):
-                    filestring=re.sub('.txt','.zip',filestring)
-                    os.remove(os.path.join(dlzips,filestring))
-     except:
-          print 'could not delete original file!'
-     else:
-          print 'deleted unnecessary zip.'
-
-     metapath=os.path.join(translatedicedatapath,'meta_caches')
-     print 'META PATH: %s' % metapath
-
-     #delete the meta folder if there are no covers. (cleanup failed installs)
-     if os.path.exists(metapath):
-          if not os.path.exists(os.path.join(metapath,'movie','covers','tt0011130')):
-               import shutil
-               try:
-                    print 'Removing meta cache folder!!'
-                    shutil.rmtree(metapath)
-               except:
-                    print 'Failed to delete meta folder'
-                    return False
-
-                        
-     #Quick hack for v1.0.0 --- only run if meta_caches does not exist
-     if not os.path.exists(metapath):
-
-          #get containers dict from container_urls.py
-          containers = container_urls.get()
-          
-          #Offer to download the metadata
+     #Initialize MetaHandler and MetaContainer classes
+     #MetaContainer will clean up from previous installs, so good idea to always initialize at startup
+     mh=metahandlers.MetaData()
+     mc = metacontainers.MetaContainer()
      
-          dialog = xbmcgui.Dialog()
-          ret = dialog.yesno('Download Meta Containers '+str(containers['date'])+' ?', 'There is a metadata container avaliable.','Install it to get images and info for videos.', 'Would you like to get it? Its a large '+str(containers['mv_db_base_size'])+'MB download.','Remind me later', 'Install')
-          if ret==True:
+     # !!!!!!!! TEST CODE TO BE REMOVED BEFORE RELEASE !!!!     
+     
+     if not mh.check_meta_installed(addon_id):
+         mh.insert_meta_installed(addon_id)
+     
+     # !!!!!!!! TEST CODE TO BE REMOVED BEFORE RELEASE !!!!     
+
+
+     #Check meta cache DB if meta pack has been installed
+     if mh.check_meta_installed(addon_id):
+         work_path = mc.work_path
+
+         #get containers dict from container_urls.py
+         containers = container_urls.get()                     
+
+         #Offer to download the metadata
+     
+         dialog = xbmcgui.Dialog()
+         ret = dialog.yesno('Download Meta Containers '+str(containers['date'])+' ?', 'There is a metadata container avaliable.','Install it to get images and info for videos.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+         if ret==True:
                  
-               #download dem files
-               get_db_zip=Zip_DL_and_Install(containers['mv_db_url'],'movie','database')
-               get_cover_zip=Zip_DL_and_Install(containers['mv_covers_url'],'movie','covers')
+              #download dem files
+              get_db_zip=Zip_DL_and_Install(containers['db_url'],'database', work_path, mc)
+              get_cover_zip=Zip_DL_and_Install(containers['mv_covers_url'],'movie_covers', work_path, mc)
 
-               #do nice notification
-               if get_db_zip==True and get_cover_zip==True:
-                    Notify('small','Metacontainer Installation Success','','')
-               elif get_db_zip==False or get_cover_zip==False:
-                    Notify('small','Metacontainer Installation Failure','','')
+              #do nice notification
+              if get_db_zip==True and get_cover_zip==True:
+                   Notify('small','Metacontainer Installation Success','','')
+              elif get_db_zip==False or get_cover_zip==False:
+                   Notify('small','Metacontainer Installation Failure','','') 
 
 
-def Zip_DL_and_Install(url,dbtype,installtype):
-               ####function to download and install a metacontainer. ####
-     
-               url = str(url)
+def Zip_DL_and_Install(url,installtype,work_folder,mc=metacontainers.MetaContainer()):
+     ####function to download and install a metacontainer. ####
 
-               #define dl directory
-               dlzips=os.path.join(translatedicedatapath,'downloaded meta zips')
+     url = str(url)
 
-               #get the download url
-               mu=megaroutines.megaupload(translatedicedatapath)
-               print 'URL:',url
-               thefile=mu.resolve_megaup(url)
+     #get the download url
+     mu=megaroutines.megaupload(translatedicedatapath)
+     print 'Download URL: %s' % url
+     thefile=mu.resolve_megaup(url)
 
-               #define the path to save it to
-               filepath=os.path.normpath(os.path.join(dlzips,thefile[1]))
+     #define the path to save it to
+     filepath=os.path.normpath(os.path.join(work_folder,thefile[1]))
+
+     print 'FILEPATH: ',filepath
+     filepath_exists=os.path.exists(filepath)
+     #if zip does not already exist, download from url, with nice display name.
+     if filepath_exists==False:
+                    
+         print 'Downloading zip: %s' % thefile[0]
+         do_wait(thefile[3])
+         Download(thefile[0], filepath, installtype)
+       
+     elif filepath_exists==True:
+          print 'zip already downloaded, attempting extraction'                   
           
-               print 'FILEPATH: ',filepath
-               filepath_exists=os.path.exists(filepath)
-               #if zip does not already exist, download from url, with nice display name.
-               if filepath_exists==False:
-
-                    do_wait(thefile[3])
-                    
-                    print 'downloading zip'
-                    
-                    Download(thefile[0],filepath,dbtype+' '+installtype)
-
-                    #make a text file with the same name as zip, to act as a very simple download log.
-                    textfile=re.sub('.zip','',thefile[1])
-                    textfilepath=os.path.join(dlzips,textfile+'.txt')
-                    save(textfilepath,' ')
-                    
-               elif filepath_exists==True:
-                    print 'zip already downloaded, attempting extraction'
-
-               print '!!!!handling meta install!!!!'
-               mc = metacontainers.MetaContainer()
-               install=mc.Install_Icefilms_Container(translatedicedatapath,filepath,dbtype,installtype)
-               return install
+     print '!!!!handling meta install!!!!'
+     install=mc.install_metadata_container(filepath, installtype)
+     return True
 
 
 def Startup_Routines():
@@ -375,10 +339,7 @@ def Startup_Routines():
      # avoid error on first run if no paths exists, by creating paths
      if not os.path.exists(translatedicedatapath): os.makedirs(translatedicedatapath)
      if not os.path.exists(transdowninfopath): os.makedirs(transdowninfopath)
-
-     dlzips=os.path.join(translatedicedatapath,'downloaded meta zips')
-     if not os.path.exists(dlzips): os.makedirs(dlzips)
-          
+         
      #force refresh addon repositories, to check for updates.
      #xbmc.executebuiltin('UpdateAddonRepos')
      
@@ -748,10 +709,10 @@ def ICEHOMEPAGE(url):
 
 def RECENT(url):
         link=GetURL(url)
-        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>').findall(link)
+        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrape='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
-                recadd=re.compile('<h1>Recently Added</h1>(.+?)<h1>Latest Releases</h1>').findall(scrape)
+                recadd=re.compile('<h1>Recently Added</h1>(.+?)<h1>Latest Releases</h1>', re.DOTALL).findall(scrape)
                 for scraped in recadd:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
@@ -761,10 +722,10 @@ def RECENT(url):
     
 def LATEST(url):
         link=GetURL(url)
-        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>').findall(link)
+        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrape='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
-                latrel=re.compile('<h1>Latest Releases</h1>(.+?)<h1>Being Watched Now</h1>').findall(scrape)
+                latrel=re.compile('<h1>Latest Releases</h1>(.+?)<h1>Being Watched Now</h1>', re.DOTALL).findall(scrape)
                 for scraped in latrel:
                         mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
@@ -774,10 +735,10 @@ def LATEST(url):
 
 def WATCHINGNOW(url):
         link=GetURL(url)
-        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>').findall(link)
+        homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrapy='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
-                watnow=re.compile('<h1>Being Watched Now</h1>(.+?)<h1>Statistics</h1>').findall(scrapy)
+                watnow=re.compile('<h1>Being Watched Now</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(scrapy)
                 for scraped in watnow:
                         mirlinks=re.compile('href=(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
@@ -1715,16 +1676,15 @@ def Item_Meta(name):
 def do_wait(account):
      # do the necessary wait, with  a nice notice and pre-set waiting time. I have found the below waiting times to never fail.
      
-     if account == 'premium':
+     if account == 'premium':    
           return handle_wait(5,'Megaupload','Loading video with your *Premium* account.')
 
      elif account == 'free':
           return handle_wait(26,'Megaupload Free User','Loading video with your free account.')
 
-     elif account == 'none':
+     else:
           return handle_wait(46,'Megaupload','Loading video.')
     
-
 
 def handle_wait(time_to_wait,title,text):
 
@@ -2062,6 +2022,8 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
                  if searchMode==False:
                      contextMenuItems.append((watchedMenu, 'XBMC.RunPlugin(%s?mode=990&name=%s&url=%s&imdbnum=%s&videoType=%s&season=%s&episode=%s)' 
                          % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), videoType, season, episode)))
+             
+             print meta
              liz.setInfo(type="Video", infoLabels=meta)
          
          # add/delete favourite
@@ -2087,8 +2049,8 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              contextMenuItems.append(('Switch to Library Mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
                          
          if contextMenuItems:
-             #liz.addContextMenuItems(contextMenuItems, replaceItems=True)
-             liz.addContextMenuItems(contextMenuItems)
+             liz.addContextMenuItems(contextMenuItems, replaceItems=True)
+             #liz.addContextMenuItems(contextMenuItems)
          #########
 
          #print '          Mode=' + str(mode) + ' URL=' + str(url)
@@ -2355,7 +2317,6 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
 
                
 def find_meta_for_search_results(results, mode, search=''):
-    print 'SEARCH MODE: %s' % mode
     if mode == 100:
         #initialise meta class before loop
         metaget=metahandlers.MetaData()
