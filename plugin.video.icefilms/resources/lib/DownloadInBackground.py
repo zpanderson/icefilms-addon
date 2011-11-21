@@ -1,5 +1,5 @@
 '''
-Created on 09 Ìבס 2011
+Created on 09 Jan 2011
 
 @author: nteg
 '''
