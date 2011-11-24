@@ -1,6 +1,5 @@
 <settings>
    <category label="Menus">
-   	<setting id="icefilms-url" type="text" label="30100" default="http://www.icefilms.info/" />
     <setting id="hide-homepage" type="bool" label="30101" default="false"/>
   	<setting id="flatten-single-season" type="bool" label="30103" default="true"/>
   	<setting id="flatten-source-type" type="bool" label="30104" default="true"/>
@@ -35,4 +34,8 @@
 	<setting id="tvshows-view" type="number" label="30402" default="503" enable="!eq(-2,false)"/>
 	<setting id="episodes-view" type="number" label="30403" default="504" enable="!eq(-3,false)"/>
    </category>
+   <category label="Miscellaneous">
+      <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
+      <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="80" />
+   </category>   
 </settings>
