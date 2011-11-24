@@ -40,9 +40,10 @@ sys.path.append( os.path.join( icepath, 'resources', 'lib' ) )
 import container_urls,clean_dirs,htmlcleaner,megaroutines
 from metahandler import metahandlers, metacontainers
 from cleaners import *
+#from myplayer import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
-
+   
 ####################################################
 
 ############## Constants / Variables ###############
@@ -61,6 +62,10 @@ USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/
 iceurl = ICEFILMS_URL
 meta_installed = True
 meta_setting = selfAddon.getSetting('use-meta')
+
+#Auto-watch
+currentTime = 1
+totalTime = 1
 
 ####################################################
 
@@ -719,6 +724,21 @@ def check_episode(name):
     else:
         return False
 
+
+def get_video_name(name):
+    video = {}
+    if check_episode(name):
+        r = re.search('[0-9]+x[0-9]+ (.+?) [(]([0-9]{4})[)]', name)        
+    else:
+        r = re.search('(.+?) [(]([0-9]{4})[)]',name)
+    if r:
+        video['name'] = r.group(1)
+        video['year'] = r.group(2)
+    else:
+        video['name'] = name
+        video['year'] = ''
+    return video
+        
 
 def check_video_meta(name, metaget):
     #Determine if it's a movie or tvshow by the title returned - tv show will contain eg. 01x15 to signal season/episode number
@@ -1820,6 +1840,7 @@ def Handle_Vidlink(url):
           #shared2url=SHARED2_HANDLER(url)
           #return shared2url
 
+
 def PlayFile(name,url):
     
     listitem=Item_Meta(name)
@@ -1830,17 +1851,88 @@ def PlayFile(name,url):
     except:
         print 'local file playing failed'
 
-def Stream_Source(name,url):
-     link=Handle_Vidlink(url)
-     listitem=Item_Meta(name)
-     print 'attempting to stream file'
-     try:
-          #directly call xbmc player (provides more options)
-          xbmc.Player( xbmc.PLAYER_CORE_DVDPLAYER ).play( link[0], listitem )
-     except:
-          print 'file streaming failed'
-          Notify('megaalert','','','')
 
+def Stream_Source(name,url):
+    global currentTime
+    global totalTime
+    global watched_percent
+    watched_percent = get_watched_percent()
+    link=str(Handle_Vidlink(url))
+    listitem=Item_Meta(name)
+    print '--- Attempting to stream file: %s' % name
+     
+    mplayer = MyPlayer()
+    mplayer.play(link, listitem)
+
+    try:
+        totalTime = mplayer.getTotalTime()
+    except Exception:
+        xbmc.sleep(20000) #wait 20 seconds until the video is playing before getting totalTime
+        try:
+            totalTime = mplayer.getTotalTime()
+        except Exception:
+            return
+    while(1):
+        try:
+            currentTime= mplayer.getTime()
+        except Exception:
+            print 'XBMC is not currently playing a media file'
+            break
+        xbmc.sleep(1000)
+
+
+def get_watched_percent():
+     watched_values = [.5, .6, .7, .8, .9]
+     return watched_values[int(selfAddon.getSetting('watched-percent'))]
+
+
+class MyPlayer(xbmc.Player) :
+
+     def __init__ (self):
+        xbmc.Player.__init__(self)
+        print 'initializing myPlayer...'
+        
+     def play(self, item, listitem):
+        index = item.find(',') - 1
+        url = item[2:index]
+        print 'now im playing... '+url
+        xbmc.Player(xbmc.PLAYER_CORE_DVDPLAYER).play(url, listitem)
+        
+     def isplaying(self):
+        xbmc.Player.isPlaying(self)
+
+     def onPlayBackEnded(self):
+        global currentTime
+        global totalTime      
+        percentWatched = currentTime / totalTime
+        print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
+        if percentWatched >= watched_percent:
+            #set watched
+            vidname=handle_file('videoname','open')
+            video = get_video_name(vidname)
+            ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+
+     def onPlayBackStopped(self):
+        global currentTime
+        global totalTime
+        print 'WATCHED PERCENT: %s' % watched_percent
+        percentWatched = currentTime / totalTime
+        print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
+        if percentWatched <= watched_percent:
+            #set watched
+            vidname=handle_file('videoname','open')
+            video = get_video_name(vidname)
+            print 'VIDEONAME: %s Year: %s'% (video['name'], video['year'])
+            ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+
+############## End MyPlayer Class ################
+
+#     try:
+#          #directly call xbmc player (provides more options)
+#          xbmc.Player( xbmc.PLAYER_CORE_DVDPLAYER ).play( link[0], listitem )
+#     except:
+#          print 'file streaming failed'
+#          Notify('megaalert','','','')
 
 
 def Download_Source(name,url):
@@ -1993,7 +2085,7 @@ def addExecute(name,url,mode,iconimage):
     sysname = urllib.quote_plus(name)
     sysurl = urllib.quote_plus(url)
     
-    u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
+    u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdbnum))  + "&videoType=" + type + "&season=" + str(season) + "&episode=" + str(episode)
     ok=True
 
     liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
@@ -2013,9 +2105,8 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
-def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, disablewatch=False, searchMode=False, totalItems=0):
+def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, ):
     if xbmc_imported:
-         
          ###  addDir with context menus and meta support  ###
    
          #encode url and name, so they can pass through the sys.argv[0] related strings
@@ -2027,15 +2118,22 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          #name has to pass through lots of weird operations earlier in the script,
          #so it should only be unicodified just before it is displayed.
          name = htmlcleaner.clean(name)
-
-         if mode == 12 or mode == 13:
-             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb))
-         else:
-             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
-         ok = True
                      
          #handle adding context menus
          contextMenuItems = []
+         
+         videoType = ''
+         if mode == 12: # TV series
+             videoType = 'tvshow'
+         elif mode == 13: # TV Season
+             videoType = 'season'
+         elif mode == 14: # TV Episode
+             videoType = 'episode'
+         elif mode == 100: # movies
+             videoType = 'movie'
+                     
+         season=''
+         episode=''
 
          #handle adding meta
          if meta == False:
@@ -2052,25 +2150,19 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              
              # mark as watched or unwatched 
              addWatched = False
-             videoType = ''
-             season=''
-             episode=''
              if mode == 12: # TV series
                  addWatched = True
-                 videoType = 'tvshow'
                  if tvshow_fanart == 'true':
                      liz.setProperty('fanart_image', meta['backdrop_url'])
                  contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
              elif mode == 13: # TV Season
-                 addWatched = True
-                 videoType = 'season'
+                 addWatched = True                 
                  season = meta['season']
                  if tvshow_fanart == 'true':
                      liz.setProperty('fanart_image', meta['backdrop_url'])                 
                  contextMenuItems.append(('Season Information', 'XBMC.Action(Info)'))                 
              elif mode == 14: # TV Episode
-                 addWatched = True
-                 videoType = 'episode'
+                 addWatched = True                 
                  season = meta['season']
                  episode = meta['episode']
                  if tvshow_fanart == 'true':
@@ -2078,7 +2170,6 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
                  contextMenuItems.append(('Episode Information', 'XBMC.Action(Info)'))
              elif mode == 100: # movies
                  addWatched = True
-                 videoType = 'movie'
                  if movie_fanart == 'true':
                      liz.setProperty('fanart_image', meta['backdrop_url'])                 
                  #if searchMode == False:
@@ -2129,6 +2220,18 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          #########
 
          #print '          Mode=' + str(mode) + ' URL=' + str(url)
+
+         if mode in (12, 13, 100):
+             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType
+         elif mode == 14:
+             if check_episode(name):
+                 episode_info = re.search('([0-9]+)x([0-9]+)', name)
+                 season = int(episode_info.group(1))
+                 episode = int(episode_info.group(2))
+             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(100) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb))  + "&videoType=" + videoType + "&season=" + str(season) + "&episode=" + str(episode)
+         else:
+             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
+         ok = True
 
          ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=True, totalItems=totalItems)
          return ok
@@ -2382,7 +2485,7 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
                 addDir(episode,iceurl+url,14,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems)
             else:
                 #add directories without meta
-                addDir(episode,iceurl+url,14,'',totalItems=totalitems)
+                addDir(episode,iceurl+url,14,'',imdb='tt'+str(imdb_id),totalItems=totalitems)
 
         
         #add without metadata -- imdb is still passed for use with Add to Favourites
@@ -2504,10 +2607,12 @@ def SearchForTrailer(search, imdb_id, type, manual=False):
         metaget.update_trailer(type, imdb_id, trailer_url)
         xbmc.executebuiltin("XBMC.Container.Refresh")
 
-def ChangeWatched(imdb_id, videoType, name, season, episode):
+
+def ChangeWatched(imdb_id, videoType, name, season, episode, year='', watched=''):
     metaget=metahandlers.MetaData()
-    metaget.change_watched(videoType, name, imdb_id, season=season, episode=episode)
+    metaget.change_watched(videoType, name, imdb_id, season=season, episode=episode, year=year, watched=watched)
     xbmc.executebuiltin("XBMC.Container.Refresh")
+
 
 def get_params():
         param=[]
@@ -2751,7 +2856,7 @@ elif mode==111:
         DELETE_FROM_FAVOURITES(name,url)
 
 elif mode==200:
-        print ""+url
+        print ""+url      
         Stream_Source(name,url)
 
 elif mode==201:
