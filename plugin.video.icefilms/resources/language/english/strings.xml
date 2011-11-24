@@ -1,6 +1,5 @@
 <strings>
     <!-- MENUS -->
-    <string id="30100">Icefilms Site URL:</string>
     <string id="30101">Hide homepage</string>
     <string id="30103">Flatten TV Shows with single seasons</string>
     <string id="30104">Flatten source type for single type videos</string>
@@ -32,6 +31,9 @@
     <string id="30600">Enable MetaData</string>
     <string id="30601">    Show Movie Fanart</string>
     <string id="30602">    Show TV Show Fanart</string>    
-    
+
+    <!-- Miscellaneous -->
+    <string id="30500">Icefilms Site URL</string>
+    <string id="30501">Auto-Watch Percentage</string>
 >>>>>>> stable
 </strings>
