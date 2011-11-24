@@ -2221,7 +2221,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
 
          #print '          Mode=' + str(mode) + ' URL=' + str(url)
 
-         if mode in (12, 13, 100):
+         if mode in (12, 13, 100, 101, 102):
              u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType
          elif mode == 14:
              if check_episode(name):
