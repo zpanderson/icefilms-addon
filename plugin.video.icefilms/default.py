@@ -21,12 +21,19 @@ import unicodedata
 import random
 import copy
 
-#necessary so that the metacontainers.py can use the scrapers
-try: import xbmc,xbmcplugin,xbmcgui,xbmcaddon
-except:
-     xbmc_imported = False
-else:
-     xbmc_imported = True
+############ Set prepare_zip to True in order to scrape the entire site to create a new meta pack ############
+''' 
+Setting to true will also enable a new menu option 'Create Meta Pack' which will scrape all categories and download covers & backdrops 
+'''
+
+#prepare_zip = True
+prepare_zip = False
+
+
+##############################################################################################################
+
+
+import xbmc,xbmcplugin,xbmcgui,xbmcaddon
 
 #get path to me
 addon_id = 'plugin.video.icefilms'
@@ -40,7 +47,6 @@ sys.path.append( os.path.join( icepath, 'resources', 'lib' ) )
 import container_urls,clean_dirs,htmlcleaner,megaroutines
 from metahandler import metahandlers, metacontainers
 from cleaners import *
-#from myplayer import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
    
@@ -60,7 +66,6 @@ USER_AGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/
 
 #useful global strings:
 iceurl = ICEFILMS_URL
-meta_installed = True
 meta_setting = selfAddon.getSetting('use-meta')
 
 #Auto-watch
@@ -273,29 +278,26 @@ def LoginStartup():
 def ContainerStartup():
 
      #Initialize MetaHandler and MetaContainer classes
-     #MetaContainer will clean up from previous installs, so good idea to always initialize at startup
-     mh=metahandlers.MetaData()
+     #MetaContainer will clean up from previous installs, so good idea to always initialize at addon startup
+     mh=metahandlers.MetaData(preparezip=prepare_zip)
      mc = metacontainers.MetaContainer()
-     
-     # !!!!!!!! TEST CODE TO BE REMOVED BEFORE RELEASE !!!!     
-     
-     if not mh.check_meta_installed(addon_id):
-         mh.insert_meta_installed(addon_id)
-     
-     # !!!!!!!! TEST CODE TO BE REMOVED BEFORE RELEASE !!!!     
 
+     #Check meta cache DB if meta pack has been installed     
+     meta_installed = mh.check_meta_installed(addon_id)
+     
+     movie_fanart = selfAddon.getSetting('movies-fanart')
+     tvshow_fanart = selfAddon.getSetting('tvshows-fanart')
 
-     #Check meta cache DB if meta pack has been installed
-     if mh.check_meta_installed(addon_id):
-         work_path = mc.work_path
-
-         #get containers dict from container_urls.py
-         containers = container_urls.get()                     
+     #get containers dict from container_urls.py
+     containers = container_urls.get()  
+                            
+     if not meta_installed:
+         work_path = mc.work_path                   
 
          #Offer to download the metadata
-     
          dialog = xbmcgui.Dialog()
          ret = dialog.yesno('Download Meta Containers '+str(containers['date'])+' ?', 'There is a metadata container avaliable.','Install it to get images and info for videos.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+         
          if ret==True:
                  
               #download dem files
@@ -305,8 +307,27 @@ def ContainerStartup():
               #do nice notification
               if get_db_zip==True and get_cover_zip==True:
                    Notify('small','Metacontainer Installation Success','','')
+                   mh.insert_meta_installed(addon_id, covers='true')
               elif get_db_zip==False or get_cover_zip==False:
                    Notify('small','Metacontainer Installation Failure','','') 
+
+     if movie_fanart=='true' and meta_installed:
+         dialog = xbmcgui.Dialog()
+         ret = dialog.yesno('Download Movie Fanart?', 'There is a metadata container avaliable.','Install it to get background images for movies.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+         if ret==True:
+             #download dem files
+             #get_db_zip=Zip_DL_and_Install(containers['db_url'],'database', work_path, mc)
+             #mh.update_meta_installed(addon_id, backdrops='true')
+             print 'download movie fanart'
+                
+     if tvshow_fanart=='true' and meta_installed:
+         dialog = xbmcgui.Dialog()
+         ret = dialog.yesno('Download TV Fanart?', 'There is a metadata container avaliable.','Install it to get background images for tv shows.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+         if ret==True:   
+             #download dem files
+             #get_db_zip=Zip_DL_and_Install(containers['db_url'],'database', work_path, mc)
+             #mh.update_meta_installed(addon_id, backdrops='true')
+             print 'download tv fanart'
 
 
 def Zip_DL_and_Install(url,installtype,work_folder,mc=metacontainers.MetaContainer()):
@@ -358,6 +379,31 @@ def Startup_Routines():
      # Run the container checking startup routines, if enable meta is set to true
      if meta_setting=='true': ContainerStartup()
 
+
+def create_meta_pack():
+       
+    A2Z=[chr(i) for i in xrange(ord('A'), ord('Z')+1)]
+    
+    print '### GETTING MOVIE METADATA FOR ALL *MUSIC* ENTRIES'
+    MOVIEINDEX(iceurl + 'music/a-z/1')
+    print '### GETTING MOVIE METADATA FOR ALL *STANDUP* ENTRIES'
+    MOVIEINDEX(iceurl + 'standup/a-z/1')
+    print '### GETTING MOVIE METADATA FOR ALL *OTHER* ENTRIES'
+    MOVIEINDEX(iceurl + 'other/a-z/1')
+    print '### GETTING MOVIE METADATA FOR ALL ENTRIES ON: '+'1'
+    MOVIEINDEX(iceurl + 'movies/a-z/1')
+    for theletter in A2Z:
+         print '### GETTING MOVIE METADATA FOR ALL ENTRIES ON: '+theletter
+         MOVIEINDEX(iceurl + 'movies/a-z/' + theletter)
+
+         
+    print '### GETTING TV METADATA FOR ALL ENTRIES ON: '+'1'
+    TVINDEX(iceurl + 'tv/a-z/1')
+    for theletter in A2Z:
+         print '### GETTING TV METADATA FOR ALL ENTRIES ON: '+theletter
+         TVINDEX(iceurl + 'tv/a-z/' + theletter)
+
+
 def CATEGORIES():  #  (homescreen of addon)
 
           #run startup stuff
@@ -385,6 +431,10 @@ def CATEGORIES():  #  (homescreen of addon)
                 addDir('Homepage',iceurl+'index',56,homepage)
           addDir('Favourites',iceurl,57,os.path.join(art,'favourites.png'))
           addDir('Search',iceurl,55,search)
+          
+          #Only show if prepare_zip = True - meaning you are creating a meta pack
+          if prepare_zip:
+              addDir('Create Meta Pack',iceurl,666,'')
 
 
 def prepare_list(directory,dircontents):
@@ -431,7 +481,10 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
     stringlist=prepare_list(directory,dircontents)
     
     if enablemetadata == True:
-        metaget=metahandlers.MetaData()
+        metaget=metahandlers.MetaData(preparezip=prepare_zip)
+        meta_installed = metaget.check_meta_installed(addon_id)
+    else:
+        meta_installed = False
          
     #for each string
     for thestring in stringlist:
@@ -440,7 +493,7 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
         info = favRead(thestring)
         if info is not None:
         
-            if enablemetadata == True:
+            if enablemetadata == True and meta_installed:
                 #return the metadata dictionary
                 if info[3] is not None:
                                        
@@ -452,7 +505,7 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                         addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
                     else:
                         #add directories with meta
-                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist))        
+                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), backdrops=meta_installed['backdrops_installed'])        
                 else:
                     #add all the items without meta
                     addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
@@ -509,18 +562,20 @@ def MOVIE_FAVOURITES(url):
         #handler for all movie favourites
         if moviedircontents is not None:
 
+            #add with metadata -- imdb is still passed for use with Add to Favourites
+            if meta_setting=='true':
+                addFavourites(True,moviefav,moviedircontents)
             #add without metadata -- imdb is still passed for use with Add to Favourites
-            if meta_installed==False or meta_setting=='false':
+            else:
                 addFavourites(False,moviefav,moviedircontents)
 
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            elif meta_installed==True and meta_setting=='true':
-                addFavourites(True,moviefav,moviedircontents)
+
         else:
             print 'moviedircontents is none!'
 
     # Enable library mode & set the right view for the content
     setView('movies', 'movies-view')
+
 
 #TV Shows Favourites folder
 def TV_FAVOURITES(url):
@@ -542,18 +597,20 @@ def TV_FAVOURITES(url):
         #handler for all tv favourites
         if tvdircontents is not None:
 
+            #add with metadata -- imdb is still passed for use with Add to Favourites
+            if meta_setting=='true':
+                addFavourites(True,tvfav,tvdircontents)    
             #add without metadata -- imdb is still passed for use with Add to Favourites
-            if meta_installed==False or meta_setting=='false':
+            else:
                 addFavourites(False,tvfav,tvdircontents)
 
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            elif meta_installed==True and meta_setting=='true':
-                addFavourites(True,tvfav,tvdircontents)             
+         
         else:
             print 'tvshows dircontents is none!'
 
     # Enable library mode & set the right view for the content
     setView('movies', 'tvshows-view')
+
 
 def URL_TYPE(url):
      #Check whether url is a tv episode list or movie/mirrorpage
@@ -765,15 +822,18 @@ def RECENT(url):
         link=GetURL(url)
 
         #initialise meta class before loop
-        if meta_installed==True and meta_setting=='true':
-            metaget=metahandlers.MetaData()
+        if meta_setting=='true':
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
+            meta_installed = metaget.check_meta_installed(addon_id)
+        else:
+            meta_installed = False
               
         homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrape='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
                 recadd=re.compile('<h1>Recently Added</h1>(.+?)<h1>Latest Releases</h1>', re.DOTALL).findall(scrape)
                 for scraped in recadd:
-                        mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
+                        mirlinks=re.compile('<a href=/(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
                                 url=iceurl+url
                                 name=CLEANUP(name)
@@ -783,9 +843,9 @@ def RECENT(url):
                                 else:
                                     mode = 100
 
-                                if meta_installed==True and meta_setting=='true':
+                                if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed['backdrops_installed'])
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True)
         
@@ -793,15 +853,18 @@ def LATEST(url):
         link=GetURL(url)
         
         #initialise meta class before loop
-        if meta_installed==True and meta_setting=='true':
-            metaget=metahandlers.MetaData()
+        if meta_setting=='true':
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
+            meta_installed = metaget.check_meta_installed(addon_id)
+        else:
+            meta_installed = False
                     
         homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrape='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
                 latrel=re.compile('<h1>Latest Releases</h1>(.+?)<h1>Being Watched Now</h1>', re.DOTALL).findall(scrape)
                 for scraped in latrel:
-                        mirlinks=re.compile('<a href=(.+?)>(.+?)</a>').findall(scraped)
+                        mirlinks=re.compile('<a href=/(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
                                 url=iceurl+url
                                 name=CLEANUP(name)
@@ -811,9 +874,9 @@ def LATEST(url):
                                 else:
                                     mode = 100
                                                                     
-                                if meta_installed==True and meta_setting=='true':
+                                if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed['backdrops_installed'])
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True)
 
@@ -822,15 +885,18 @@ def WATCHINGNOW(url):
         link=GetURL(url)
 
         #initialise meta class before loop
-        if meta_installed==True and meta_setting=='true':
-            metaget=metahandlers.MetaData()
+        if meta_setting=='true':
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
+            meta_installed = metaget.check_meta_installed(addon_id)
+        else:
+            meta_installed = False
                     
         homepage=re.compile('<h1>Recently Added</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(link)
         for scrape in homepage:
                 scrapy='<h1>Recently Added</h1>'+scrape+'<h1>Statistics</h1>'
                 watnow=re.compile('<h1>Being Watched Now</h1>(.+?)<h1>Statistics</h1>', re.DOTALL).findall(scrapy)
                 for scraped in watnow:
-                        mirlinks=re.compile('href=(.+?)>(.+?)</a>').findall(scraped)
+                        mirlinks=re.compile('href=/(.+?)>(.+?)</a>').findall(scraped)
                         for url,name in mirlinks:
                                 url=iceurl+url
                                 name=CLEANUP(name)
@@ -840,9 +906,9 @@ def WATCHINGNOW(url):
                                 else:
                                     mode = 100
                                                                     
-                                if meta_installed==True and meta_setting=='true':
+                                if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed['backdrops_installed'])
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True) 
 
@@ -993,24 +1059,11 @@ def MOVIEA2ZDirectories(url):
         for theletter in A2Z:
              addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
 
-        if xbmc_imported:
-             #Add number directory
-             addDir ('#1234',caturl+'1',setmode,os.path.join(art,'letters','1.png'))
-             for theletter in A2Z:
-                  addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
-        
-        else:
-             print '### GETTING MOVIE METADATA FOR ALL *MUSIC* ENTRIES'
-             MOVIEINDEX(iceurl+'music/a-z/1')
-             print '### GETTING MOVIE METADATA FOR ALL *STANDUP* ENTRIES'
-             MOVIEINDEX(iceurl+'standup/a-z/1')
-             print '### GETTING MOVIE METADATA FOR ALL *OTHER* ENTRIES'
-             MOVIEINDEX(iceurl+'other/a-z/1')
-             print '### GETTING MOVIE METADATA FOR ALL ENTRIES ON: '+'1'
-             MOVIEINDEX(caturl+'1')
-             for theletter in A2Z:
-                  print '### GETTING MOVIE METADATA FOR ALL ENTRIES ON: '+theletter
-                  MOVIEINDEX(caturl+theletter)
+        #Add number directory
+        addDir ('#1234',caturl+'1',setmode,os.path.join(art,'letters','1.png'))
+        for theletter in A2Z:
+             addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
+             
 
 def TVA2ZDirectories(url):
         setmode = '11'
@@ -1019,17 +1072,11 @@ def TVA2ZDirectories(url):
         #Generate A-Z list and add directories for all letters.
         A2Z=[chr(i) for i in xrange(ord('A'), ord('Z')+1)]
 
-        if xbmc_imported:
-            #Add number directory
-            addDir ('#1234',caturl+'1',setmode,os.path.join(art,'letters','1.png'))
-            for theletter in A2Z:
-                 addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
-        else:
-            print '### GETTING TV METADATA FOR ALL ENTRIES ON: '+'1'
-            TVINDEX(caturl+'1')
-            for theletter in A2Z:
-                 print '### GETTING TV METADATA FOR ALL ENTRIES ON: '+theletter
-                 TVINDEX(caturl+theletter)
+        #Add number directory
+        addDir ('#1234',caturl+'1',setmode,os.path.join(art,'letters','1.png'))
+        for theletter in A2Z:
+            addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
+
 
 def MOVIEINDEX(url):
     #Indexer for most things. (Movies,Music,Stand-up etc) 
@@ -1099,9 +1146,12 @@ def TVSEASONS(url, imdb_id):
             seasons = str(season_list)
             season_nums = re.compile('Season ([0-9]{1,2}) ').findall(seasons)                        
             
-            if meta_installed==True and meta_setting=='true':
-                metaget=metahandlers.MetaData()
+            if meta_setting=='true':
+                metaget=metahandlers.MetaData(preparezip=prepare_zip)
+                meta_installed = metaget.check_meta_installed(addon_id)
                 season_meta = metaget.get_seasons(showname, imdb_id, season_nums)
+            else:
+                meta_installed = False
         num = 0
         for seasons in season_list:
             if FlattenSingleSeasons==True and listlength <= 1:             
@@ -1112,9 +1162,9 @@ def TVSEASONS(url, imdb_id):
                 #save episode page source code
                 save(handle_file('episodesrc'),ep_list)
                 #add season directories
-                if meta_installed==True and meta_setting=='true' and season_meta:
+                if meta_installed and meta_setting=='true' and season_meta:
                     temp = season_meta[num]
-                    addDir(seasons.strip(),'',13,temp['cover_url'],imdb=''+str(imdb_id), meta=season_meta[num], totalItems=len(season_list)) 
+                    addDir(seasons.strip(),'',13,temp['cover_url'],imdb=''+str(imdb_id), meta=season_meta[num], totalItems=len(season_list), backdrops=meta_installed['backdrops_installed']) 
                     num = num + 1                     
                 else:
                     addDir(seasons.strip(),'',13,'', imdb=''+str(imdb_id), totalItems=len(season_list))
@@ -1149,16 +1199,14 @@ def TVEPLINKS(source, season, imdb_id):
     # displays all episodes in the source it is passed.
     match=re.compile('<img class="star" /><a href="/(.+?)&amp;">(.+?)</a>').findall(source)
         
-    if meta_installed==True and meta_setting=='true':
+    if meta_setting=='true':
         #initialise meta class before loop
-        metaget=metahandlers.MetaData()
+        metaget=metahandlers.MetaData(preparezip=prepare_zip)
     else:
         metaget=False
     for url,name in match:
             print " TVepLinks name " + name           
-            get_episode(season, name, imdb_id, url, metaget, totalitems=len(match))
-            #name=CLEANUP(name)
-            #addDir(name,iceurl+url,100,'')    
+            get_episode(season, name, imdb_id, url, metaget, totalitems=len(match)) 
     
     # Enable library mode & set the right view for the content
     setView('episodes', 'episodes-view')
@@ -2105,136 +2153,135 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
-def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, ):
-    if xbmc_imported:
-         ###  addDir with context menus and meta support  ###
-   
-         #encode url and name, so they can pass through the sys.argv[0] related strings
-         sysname = urllib.quote_plus(name)
-         sysurl = urllib.quote_plus(url)
-         dirmode=mode
+def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, backdrops=False):
+     ###  addDir with context menus and meta support  ###
 
-         #get nice unicode name text.
-         #name has to pass through lots of weird operations earlier in the script,
-         #so it should only be unicodified just before it is displayed.
-         name = htmlcleaner.clean(name)
-                     
-         #handle adding context menus
-         contextMenuItems = []
+     #encode url and name, so they can pass through the sys.argv[0] related strings
+     sysname = urllib.quote_plus(name)
+     sysurl = urllib.quote_plus(url)
+     dirmode=mode
+
+     #get nice unicode name text.
+     #name has to pass through lots of weird operations earlier in the script,
+     #so it should only be unicodified just before it is displayed.
+     name = htmlcleaner.clean(name)
+                 
+     #handle adding context menus
+     contextMenuItems = []
+     
+     videoType = ''
+     if mode == 12: # TV series
+         videoType = 'tvshow'
+     elif mode == 13: # TV Season
+         videoType = 'season'
+     elif mode == 14: # TV Episode
+         videoType = 'episode'
+     elif mode == 100: # movies
+         videoType = 'movie'
+                 
+     season=''
+     episode=''
+
+     #handle adding meta
+     if meta == False:
+         liz = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
+         liz.setInfo(type="Video", infoLabels={"Title": name})
+
+     else:
          
-         videoType = ''
+         movie_fanart = selfAddon.getSetting('movies-fanart')
+         tvshow_fanart = selfAddon.getSetting('tvshows-fanart')
+         
+         liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])                                                    
+         liz.setInfo(type="Video", infoLabels=meta)
+         
+         # mark as watched or unwatched 
+         addWatched = False
          if mode == 12: # TV series
-             videoType = 'tvshow'
+             addWatched = True
+             if tvshow_fanart == 'true' and backdrops=='true':
+                 liz.setProperty('fanart_image', meta['backdrop_url'])
+             contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
          elif mode == 13: # TV Season
-             videoType = 'season'
+             addWatched = True                 
+             season = meta['season']
+             if tvshow_fanart == 'true' and backdrops=='true':
+                 liz.setProperty('fanart_image', meta['backdrop_url'])                 
+             contextMenuItems.append(('Season Information', 'XBMC.Action(Info)'))                 
          elif mode == 14: # TV Episode
-             videoType = 'episode'
+             addWatched = True                 
+             season = meta['season']
+             episode = meta['episode']
+             if tvshow_fanart == 'true' and backdrops=='true':
+                 liz.setProperty('fanart_image', meta['backdrop_url'])                 
+             contextMenuItems.append(('Episode Information', 'XBMC.Action(Info)'))
          elif mode == 100: # movies
-             videoType = 'movie'
+             addWatched = True
+             if movie_fanart == 'true' and backdrops=='true':
+                 liz.setProperty('fanart_image', meta['backdrop_url'])                 
+             #if searchMode == False:
+             contextMenuItems.append(('Movie Information', 'XBMC.Action(Info)'))
+         #Add Refresh & Trailer Search context menu
+         if searchMode==False:
+             if mode in (12, 100):
+                 contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=999&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType)))
+                 contextMenuItems.append(('Search for trailer', 
+                                          'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
+                                          % (sys.argv[0], sysname, sysurl, dirmode, urllib.quote_plus(str(imdb))) ))                        
                      
-         season=''
-         episode=''
-
-         #handle adding meta
-         if meta == False:
-             liz = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-             liz.setInfo(type="Video", infoLabels={"Title": name})
-
-         else:
-             
-             movie_fanart = selfAddon.getSetting('movies-fanart')
-             tvshow_fanart = selfAddon.getSetting('tvshows-fanart')
-             
-             liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])                                                    
-             liz.setInfo(type="Video", infoLabels=meta)
-             
-             # mark as watched or unwatched 
-             addWatched = False
-             if mode == 12: # TV series
-                 addWatched = True
-                 if tvshow_fanart == 'true':
-                     liz.setProperty('fanart_image', meta['backdrop_url'])
-                 contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
-             elif mode == 13: # TV Season
-                 addWatched = True                 
-                 season = meta['season']
-                 if tvshow_fanart == 'true':
-                     liz.setProperty('fanart_image', meta['backdrop_url'])                 
-                 contextMenuItems.append(('Season Information', 'XBMC.Action(Info)'))                 
-             elif mode == 14: # TV Episode
-                 addWatched = True                 
-                 season = meta['season']
-                 episode = meta['episode']
-                 if tvshow_fanart == 'true':
-                     liz.setProperty('fanart_image', meta['backdrop_url'])                 
-                 contextMenuItems.append(('Episode Information', 'XBMC.Action(Info)'))
-             elif mode == 100: # movies
-                 addWatched = True
-                 if movie_fanart == 'true':
-                     liz.setProperty('fanart_image', meta['backdrop_url'])                 
-                 #if searchMode == False:
-                 contextMenuItems.append(('Movie Information', 'XBMC.Action(Info)'))
-             #Add Refresh & Trailer Search context menu
-             if searchMode==False:
-                 if mode in (12, 100):
-                     contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=999&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType)))
-                     contextMenuItems.append(('Search for trailer', 
-                                              'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
-                                              % (sys.argv[0], sysname, sysurl, dirmode, urllib.quote_plus(str(imdb))) ))                        
-                         
-             #Add Watch/Unwatch context menu             
-             if addWatched and not disablewatch:
-                 if meta['overlay'] == 6:
-                     watchedMenu='Mark as Watched'
-                 else:
-                     watchedMenu='Mark as Unwatched'
-                 if searchMode==False:
-                     contextMenuItems.append((watchedMenu, 'XBMC.RunPlugin(%s?mode=990&name=%s&url=%s&imdbnum=%s&videoType=%s&season=%s&episode=%s)' 
-                         % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), videoType, season, episode)))
-        
-         # add/delete favourite
-         if disablefav is False: # disable fav is necessary for the scrapes in the homepage category.
-             if delfromfav is True:
-                 #settings for when in the Favourites folder
-                 contextMenuItems.append(('Delete from Ice Favourites', 'XBMC.RunPlugin(%s?mode=111&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
+         #Add Watch/Unwatch context menu             
+         if addWatched and not disablewatch:
+             if meta['overlay'] == 6:
+                 watchedMenu='Mark as Watched'
              else:
-                 #if directory is an tv show or movie NOT and episode
-                 if mode == 100 or mode == 12:
-                     if imdb is not False:
-                         sysimdb = urllib.quote_plus(str(imdb))
-                     else:
-                         #if no imdb number, it will have no metadata in Favourites
-                         sysimdb = urllib.quote_plus('nothing')
-                     #if searchMode==False:
-                     contextMenuItems.append(('Add to Ice Favourites', 'XBMC.RunPlugin(%s?mode=110&name=%s&url=%s&imdbnum=%s)' % (sys.argv[0], sysname, sysurl, sysimdb)))
-         
-         # switch on/off library mode (have it appear in list after favourite options)
-         if inLibraryMode():
-             contextMenuItems.append(('Switch off Library mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
+                 watchedMenu='Mark as Unwatched'
+             if searchMode==False:
+                 contextMenuItems.append((watchedMenu, 'XBMC.RunPlugin(%s?mode=990&name=%s&url=%s&imdbnum=%s&videoType=%s&season=%s&episode=%s)' 
+                     % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), videoType, season, episode)))
+    
+     # add/delete favourite
+     if disablefav is False: # disable fav is necessary for the scrapes in the homepage category.
+         if delfromfav is True:
+             #settings for when in the Favourites folder
+             contextMenuItems.append(('Delete from Ice Favourites', 'XBMC.RunPlugin(%s?mode=111&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
          else:
-             contextMenuItems.append(('Switch to Library Mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
-                         
-         if contextMenuItems:
-             liz.addContextMenuItems(contextMenuItems, replaceItems=True)
-             #liz.addContextMenuItems(contextMenuItems)
-         #########
+             #if directory is an tv show or movie NOT and episode
+             if mode == 100 or mode == 12:
+                 if imdb is not False:
+                     sysimdb = urllib.quote_plus(str(imdb))
+                 else:
+                     #if no imdb number, it will have no metadata in Favourites
+                     sysimdb = urllib.quote_plus('nothing')
+                 #if searchMode==False:
+                 contextMenuItems.append(('Add to Ice Favourites', 'XBMC.RunPlugin(%s?mode=110&name=%s&url=%s&imdbnum=%s)' % (sys.argv[0], sysname, sysurl, sysimdb)))
+     
+     # switch on/off library mode (have it appear in list after favourite options)
+     if inLibraryMode():
+         contextMenuItems.append(('Switch off Library mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
+     else:
+         contextMenuItems.append(('Switch to Library Mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
+                     
+     if contextMenuItems:
+         liz.addContextMenuItems(contextMenuItems, replaceItems=True)
+         #liz.addContextMenuItems(contextMenuItems)
+     #########
 
-         #print '          Mode=' + str(mode) + ' URL=' + str(url)
+     #print '          Mode=' + str(mode) + ' URL=' + str(url)
 
-         if mode in (12, 13, 100, 101, 102):
-             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType
-         elif mode == 14:
-             if check_episode(name):
-                 episode_info = re.search('([0-9]+)x([0-9]+)', name)
-                 season = int(episode_info.group(1))
-                 episode = int(episode_info.group(2))
-             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(100) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb))  + "&videoType=" + videoType + "&season=" + str(season) + "&episode=" + str(episode)
-         else:
-             u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
-         ok = True
+     if mode in (12, 13, 100, 101, 102):
+         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType
+     elif mode == 14:
+         if check_episode(name):
+             episode_info = re.search('([0-9]+)x([0-9]+)', name)
+             season = int(episode_info.group(1))
+             episode = int(episode_info.group(2))
+         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(100) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb))  + "&videoType=" + videoType + "&season=" + str(season) + "&episode=" + str(episode)
+     else:
+         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
+     ok = True
 
-         ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=True, totalItems=totalItems)
-         return ok
+     ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=True, totalItems=totalItems)
+     return ok
      
 
 #VANILLA ADDDIR (kept for reference)
@@ -2303,19 +2350,21 @@ def MOVIE_FAVOURITES(url):
         
         #handler for all movie favourites
         if moviedircontents is not None:
-                       
+ 
+             #add with metadata -- imdb is still passed for use with Add to Favourites
+            if meta_setting=='true':
+                addFavourites(True,moviefav,moviedircontents, 'movie')                      
             #add without metadata -- imdb is still passed for use with Add to Favourites
-            if meta_installed==False or meta_setting=='false':
+            else:
                 addFavourites(False,moviefav,moviedircontents, 'movie')
             
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            elif meta_installed==True and meta_setting=='true':
-                addFavourites(True,moviefav,moviedircontents, 'movie')
+
         else:
             print 'moviedircontents is none!'
             
     # Enable library mode & set the right view for the content
     setView('movies', 'movies-view')
+
 
 #TV Shows Favourites folder
 def TV_FAVOURITES(url):
@@ -2337,13 +2386,14 @@ def TV_FAVOURITES(url):
         #handler for all tv favourites
         if tvdircontents is not None:
                        
+            #add with metadata -- imdb is still passed for use with Add to Favourites
+            if meta_setting=='true':
+                addFavourites(True,tvfav,tvdircontents,'tvshow')  
             #add without metadata -- imdb is still passed for use with Add to Favourites
-            if meta_installed==False or meta_setting=='false':
+            else:
                 addFavourites(False,tvfav,tvdircontents,'tvshow')
                 
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            elif meta_installed==True and meta_setting=='true':
-                addFavourites(True,tvfav,tvdircontents,'tvshow')             
+           
         else:
             print 'tvshows dircontents is none!'
     
@@ -2358,6 +2408,7 @@ def cleanUnicode(string):
     except:
         return string
 
+
 def getMeta(scrape, mode):
 
     #check settings over whether to display the number of episodes next to tv show name.
@@ -2365,17 +2416,11 @@ def getMeta(scrape, mode):
     
     #print scrape
 
-    #add without metadata -- imdb is still passed for use with Add to Favourites
-    if meta_installed==False or meta_setting=='false':
-        for imdb_id,url,name in scrape:
-            name=CLEANUP(name)
-            addDir(name,iceurl+url,mode,'',imdb='tt'+str(imdb_id), totalItems=len(scrape))
-            
     #add with metadata
-    elif meta_installed==True and meta_setting=='true':
+    if meta_setting=='true':
     
         #initialise meta class before loop
-        metaget=metahandlers.MetaData()
+        metaget=metahandlers.MetaData(preparezip=prepare_zip)
 
         #determine whether to show number of eps
         if scrape[3] and show_num_of_eps == 'true' and mode == 12:
@@ -2389,13 +2434,22 @@ def getMeta(scrape, mode):
         else:
             for imdb_id,url,name in scrape:
                 ADD_ITEM(metaget,imdb_id,url,name,mode, totalitems=len(scrape))
-
+                
+    #add without metadata -- imdb is still passed for use with Add to Favourites
+    else:
+        for imdb_id,url,name in scrape:
+            name=CLEANUP(name)
+            addDir(name,iceurl+url,mode,'',imdb='tt'+str(imdb_id), totalItems=len(scrape))
+            
 
 def ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps=False, totalitems=0):
             #clean name of unwanted stuff
             name=CLEANUP(name)
             if url.startswith('http://www.icefilms.info') == False:
                 url=iceurl+url
+            
+            meta_installed = metaget.check_meta_installed(addon_id)
+            
             meta = {}
 
             #return the metadata dictionary
@@ -2417,17 +2471,18 @@ def ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps=False, totalitems=0):
             #append number of episodes to the display name, AFTER THE NAME HAS BEEN USED FOR META LOOKUP
             if num_of_eps is not False:
                 name = name + ' ' + str(num_of_eps)
-                 
-            if meta is None:
+
+            if meta and meta_installed:
+                #add directories with meta
+                addDir(name,url,mode,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, backdrops=meta_installed['backdrops_installed'])                 
+            else:
                 #add directories without meta
                 if imdb_id == None:
                 	imdb_id == ''
                 else:
                 	imdb_id = 'tt'+str(imdb_id)
                 addDir(name,url,mode,'',imdb=imdb_id,totalItems=totalitems)
-            else:
-                #add directories with meta
-                addDir(name,url,mode,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems)
+
 
         
 def REFRESH(type, url,imdb_id,name,dirmode):
@@ -2437,7 +2492,7 @@ def REFRESH(type, url,imdb_id,name,dirmode):
         imdb_id = imdb_id.replace('tttt','')
 
         if meta_installed==True and meta_setting=='true':
-            metaget=metahandlers.MetaData()
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
             
             name=CLEANUP(name)
             r=re.search('(.+?) [(]([0-9]{4})[)]',name)
@@ -2456,6 +2511,8 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
    
         #add with metadata
         if metaget:
+            
+            meta_installed = metaget.check_meta_installed(addon_id)
             
             #clean name of unwanted stuff
             episode=CLEANUP(episode)
@@ -2480,9 +2537,9 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
             if episode_num >= 0:
                 meta=metaget.get_episode_meta(showname, imdb_id, season_num, episode_num)
                       
-            if meta:
+            if meta and meta_installed:
                 #add directories with meta
-                addDir(episode,iceurl+url,14,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems)
+                addDir(episode,iceurl+url,14,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, backdrops=meta_installed['backdrops_installed'])
             else:
                 #add directories without meta
                 addDir(episode,iceurl+url,14,'',imdb='tt'+str(imdb_id),totalItems=totalitems)
@@ -2495,8 +2552,11 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
 
               
 def find_meta_for_search_results(results, mode, search=''):
+    
     #initialise meta class before loop
-    metaget=metahandlers.MetaData()
+    metaget=metahandlers.MetaData(preparezip=prepare_zip)
+    meta_installed = metaget.check_meta_installed(addon_id)
+    
     if mode == 100:        
         for res in results:
             print 'RES:', res
@@ -2511,9 +2571,9 @@ def find_meta_for_search_results(results, mode, search=''):
             else:
                 mode = 100
                                                                        
-            if meta_installed==True and meta_setting=='true':
+            if meta_installed and meta_setting=='true':
                 meta = check_video_meta(name, metaget)
-                addDir(name,url,mode,'',meta=meta,imdb=meta['imdb_id'],searchMode=True)
+                addDir(name,url,mode,'',meta=meta,imdb=meta['imdb_id'],searchMode=True, backdrops=meta_installed['backdrops_installed'])
             else:
                 addDir(name,url,mode,'',searchMode=True)
 
@@ -2599,7 +2659,7 @@ def SearchForTrailer(search, imdb_id, type, manual=False):
             % str(trailer_url)[str(trailer_url).rfind("v=")+2:] )
         
         #dialog.ok(' title ', ' message ')
-        metaget=metahandlers.MetaData()
+        metaget=metahandlers.MetaData(preparezip=prepare_zip)
         if type==100:
             type='movie'
         elif type==12:
@@ -2609,7 +2669,7 @@ def SearchForTrailer(search, imdb_id, type, manual=False):
 
 
 def ChangeWatched(imdb_id, videoType, name, season, episode, year='', watched=''):
-    metaget=metahandlers.MetaData()
+    metaget=metahandlers.MetaData(preparezip=prepare_zip)
     metaget.change_watched(videoType, name, imdb_id, season=season, episode=episode, year=year, watched=watched)
     xbmc.executebuiltin("XBMC.Container.Refresh")
 
@@ -2873,5 +2933,8 @@ elif mode==205:
   
 elif mode==300:
         toggleLibraryMode()
+        
+elif mode==666:
+        create_meta_pack()
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
