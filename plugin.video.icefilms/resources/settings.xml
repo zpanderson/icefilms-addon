@@ -36,6 +36,6 @@
    </category>
    <category label="Miscellaneous">
       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
-      <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="80" />
+      <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
    </category>   
 </settings>
