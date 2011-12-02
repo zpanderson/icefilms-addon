@@ -1996,13 +1996,8 @@ def PlayFile(name,url):
 
 
 def Stream_Source(name,url):
-    global currentTime
-    global totalTime
-    global watched_percent
     
     callEndOfDirectory = False
-    watched_percent = get_watched_percent()
-    video_seeking = selfAddon.getSetting('video-seeking')
     
     vidname=handle_file('videoname','open')
     mypath = Get_Path(name,vidname)
@@ -2020,8 +2015,13 @@ def Stream_Source(name,url):
 
 
 def play_with_watched(url, listitem, mypath, video_seeking=False):
+    global currentTime
+    global totalTime
+    global watched_percent
+    
+    watched_percent = get_watched_percent()    
+    video_seeking = selfAddon.getSetting('video-seeking')
 
-    print 'in here'
     mplayer = MyPlayer()
     mplayer.play(url, listitem, mypath, video_seeking)
 
@@ -2280,7 +2280,7 @@ def Download_And_Play(name,url):
         if os.path.exists(mypath):
             if dlThread.isAlive():
                 listitem=Item_Meta(name)
-                               
+                              
                 play_with_watched(mypath, listitem, '')
                 
                 #xbmc.Player().play(mypath, listitem)
@@ -3096,13 +3096,16 @@ def addDownloadControls(name,localFilePath, listitem=None):
     
     #add Download info
     ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=statusUrl,listitem=xbmcgui.ListItem("Download Info"),isFolder=False)
+    print 'Ok: %s' % ok
           
     #add Cancel Download
     ok = ok and xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=cancelUrl,listitem=xbmcgui.ListItem("Cancel Download"),isFolder=False)
+    print 'Ok: %s' % ok
 
     #add Play File
     ok = ok and addLocal("Play Downloading " + name, localFilePath, listitem)
-        
+    print 'Ok: %s' % ok
+    
     return ok
 
 
