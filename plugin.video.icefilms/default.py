@@ -210,11 +210,10 @@ def DLDirStartup():
   SpecialDirs=selfAddon.getSetting('use-special-structure')
 
   if SpecialDirs == 'true':
-     mypath=str(selfAddon.getSetting('download-folder'))
 
-     if mypath:
-        if os.path.exists(mypath):
-          initial_path=os.path.join(mypath,'Icefilms Downloaded Videos')
+     if downloadPath:
+        if os.path.exists(downloadPath):
+          initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
           tvpath=os.path.join(initial_path,'TV Shows')
           moviepath=os.path.join(initial_path,'Movies')
 
@@ -634,7 +633,7 @@ def TV_FAVOURITES(url):
             print 'tvshows dircontents is none!'
 
     # Enable library mode & set the right view for the content
-    setView('movies', 'tvshows-view')
+    setView('tvshows', 'tvshows-view')
 
 
 def URL_TYPE(url):
@@ -953,10 +952,7 @@ def SEARCH(url):
             DoSearch(search,0)
             DoSearch(search,1)
             DoSearch(search,2)
-            
-            # Enable library mode & set the right view for the content
-            setView('movies', 'movies-view')
-            
+                       
             #delete tv show name file, do the same for season name file
             try:
                 os.remove(tvshowname)
@@ -967,6 +963,7 @@ def SEARCH(url):
             except:
                 pass
     setView('movies', 'movies-view')
+    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_LABEL )    
                     
                                
 def DoSearch(search,page):        
@@ -1228,7 +1225,7 @@ def TVSEASONS(url, imdb_id):
                     num = num + 1                     
                 else:
                     addDir(seasons.strip(),'',13,'', imdb=''+str(imdb_id), totalItems=len(season_list))
-                setView('tvshows', 'tvshows-view')
+                setView('seasons', 'seasons-view')
 
 
 def TVEPISODES(name,url=None,source=None,imdb_id=None):
@@ -1820,13 +1817,10 @@ def Clean_Windows_String(string):
 def Get_Path(srcname,vidname):
      ##Gets the path the file will be downloaded to, and if necessary makes the folders##
          
-     #get path for download
-     mypath=str(selfAddon.getSetting('download-folder'))
-
      #clean video name of unwanted characters
      vidname = Clean_Windows_String(vidname)
     
-     if os.path.exists(mypath):
+     if os.path.exists(downloadPath):
 
           #if source is split into parts, attach part number to the videoname.
           if re.search('Part',srcname) is not None:
@@ -1838,7 +1832,7 @@ def Get_Path(srcname,vidname):
                #add file extension
                vidname = vidname+'.avi'
 
-          initial_path=os.path.join(mypath,'Icefilms Downloaded Videos')
+          initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
 
           #is use special directory structure set to true?
           SpecialDirs=selfAddon.getSetting('use-special-structure')
@@ -2003,27 +1997,35 @@ def Stream_Source(name,url):
     mypath = Get_Path(name,vidname)
     listitem = Item_Meta(name)
 
-    try:
-        link = Handle_Vidlink(url)
-    except Exception, e:
-        print '**** Stream error: %s' % e
-        Notify('big','Invalid Source','Unable to play selected source. \n Please try another.','')
-        return
+    video_seeking = selfAddon.getSetting('video-seeking')
 
-    if link:
-        play_with_watched(link[0], listitem, mypath, video_seeking)
+    #Play File normal as a stream
+    if video_seeking == 'false':
+        try:
+            link = Handle_Vidlink(url)
+        except Exception, e:
+            print '**** Stream error: %s' % e
+            Notify('big','Invalid Source','Unable to play selected source. \n Please try another.','')
+            return
+    
+        if link:
+            play_with_watched(link[0], listitem, mypath)
+    
+    #Download file in a separate thread then play - delete file when done
+    else:
+        Download_And_Play(name,url)
+        CancelDownload(name)
 
 
-def play_with_watched(url, listitem, mypath, video_seeking=False):
+def play_with_watched(url, listitem, mypath):
     global currentTime
     global totalTime
     global watched_percent
     
     watched_percent = get_watched_percent()    
-    video_seeking = selfAddon.getSetting('video-seeking')
 
     mplayer = MyPlayer()
-    mplayer.play(url, listitem, mypath, video_seeking)
+    mplayer.play(url, listitem, mypath)
 
     try:
         totalTime = mplayer.getTotalTime()
@@ -2276,7 +2278,8 @@ def Download_And_Play(name,url):
         print "Starting Download Thread"
         dlThread = DownloadThread(link[0], mypath, vidname)
         dlThread.start()
-        handle_wait(10, "Buffering", "Waiting a bit before playing...")
+        buffer_delay = int(selfAddon.getSetting('buffer-delay'))
+        handle_wait(buffer_delay, "Buffering", "Waiting a bit before playing...")
         if os.path.exists(mypath):
             if dlThread.isAlive():
                 listitem=Item_Meta(name)
