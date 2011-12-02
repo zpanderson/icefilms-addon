@@ -26,14 +26,17 @@
     <string id="30401">Movies View</string>
     <string id="30402">TV Shows View</string>
     <string id="30403">Episodes View</string>
+    <string id="30404">Default View</string>
     
     <!-- Meta Data -->
     <string id="30600">Enable MetaData</string>
-    <string id="30601">    Show Movie Fanart</string>
-    <string id="30602">    Show TV Show Fanart</string>    
+    <string id="30601">    Movie Fanart</string>
+    <string id="30602">    TV Fanart</string>    
 
     <!-- Miscellaneous -->
     <string id="30500">Icefilms Site URL</string>
-    <string id="30501">Auto-Watch Percentage</string>
+    <string id="30501">Default Play Action</string>
+    <string id="30502">Auto-Watch Percentage</string>
+    <string id="30503">Allow Video Seeking - Requires Fast Connection</string>
 >>>>>>> stable
 </strings>
