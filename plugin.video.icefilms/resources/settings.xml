@@ -32,13 +32,15 @@
 	<setting id="auto-view" type="bool" label="30400" default="false"/>
 	<setting id="movies-view" type="number" label="30401" default="503" enable="!eq(-1,false)"/>
 	<setting id="tvshows-view" type="number" label="30402" default="503" enable="!eq(-2,false)"/>
-	<setting id="episodes-view" type="number" label="30403" default="504" enable="!eq(-3,false)"/>
-	<setting id="default-view" type="number" label="30404" default="50"/>
+	<setting id="seasons-view" type="number" label="30403" default="503" enable="!eq(-3,false)"/>	
+	<setting id="episodes-view" type="number" label="30404" default="504" enable="!eq(-4,false)"/>
+	<setting id="default-view" type="number" label="30405" default="50"/>
    </category>
    <category label="Miscellaneous">
       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
-      <setting id="play-action" type="enum" label="30501" values="Watch Stream|Download|Download and Watch" default="Watch Stream"/>
-      <setting id="watched-percent" label="30502" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
-	    <setting id="video-seeking" type="bool" label="30503" default="false" visible="false"/>
+      <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
+      <setting id="play-action" type="enum" label="30502" values="Watch Stream|Download|Download and Watch" default="Watch Stream"/>
+	    <setting id="video-seeking" type="bool" label="30503" default="false"/>
+	    <setting id="buffer-delay" type="number" label="30504" default="10"/>
    </category>   
 </settings>
