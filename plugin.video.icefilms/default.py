@@ -19,6 +19,7 @@ import unicodedata
 import random
 import copy
 import threading
+import string
 
 ############ Set prepare_zip to True in order to scrape the entire site to create a new meta pack ############
 ''' 
@@ -73,6 +74,9 @@ currentTime = 1
 totalTime = 1
 
 callEndOfDirectory = True
+
+#Variable for multi-part
+finalPart = 0
 
 ####################################################
 
@@ -149,7 +153,8 @@ def handle_file(filename,getmode=''):
           return_file = xbmcpath(metapath,'mpaa.txt')
      elif filename == 'listpic':
           return_file = xbmcpath(metapath,'listpic.txt')
-
+     elif filename == 'sourceList':
+          return_file = xbmcpath(metapath,'SourceList.txt')
      elif filename == 'smallicon':
           return_file = xbmcpath(art,'smalltransparent2.png')
      elif filename == 'homepage':
@@ -537,26 +542,6 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                 #add all the items without meta
                 addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
 
-def setView(content, viewType):
-
-    # kept for reference only
-    #movies_view = selfAddon.getSetting('movies-view')
-    #tvshows_view = selfAddon.getSetting('tvshows-view')
-    #episodes_view = selfAddon.getSetting('episodes-view')
-
-    # set content type so library shows more views and info
-    xbmcplugin.setContent(int(sys.argv[1]), content)
-    if selfAddon.getSetting('auto-view') == 'true':
-        xbmc.executebuiltin("Container.SetViewMode(%s)" % selfAddon.getSetting(viewType) )
-
-    # set sort methods - probably we don't need all of them
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_UNSORTED )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_LABEL )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_VIDEO_RATING )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_DATE )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_PROGRAM_COUNT )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_VIDEO_RUNTIME )
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_GENRE )
 
 def FAVOURITES(url):
     #get necessary paths
@@ -1508,16 +1493,33 @@ def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
         if r5r6 == 1:
                 addDir('R5/R6 DVDRip',url,104,os.path.join(art,'source_types','r5r6.png')) 
 
-def Add_Multi_Parts(name,url,icon):
-     #StackMulti = selfAddon.getSetting('stack-multi-part')
-     #StackMulti=='false'
-     #if StackMulti=='true':
-     #save list of urls to later be stacked when user selects part
-          addExecute(name,url,get_default_action(),icon)
+def Add_Multi_Parts(name,url,icon,sourcenumber):
+     StackMulti = selfAddon.getSetting('stack-multi-part')
 
-     #elif StackMulti=='false':
-     #     addExecute(name,url,200,icon)
+     if StackMulti=='true':
+         sourceListFile=handle_file('sourceList','')
+         allSources = openfile(sourceListFile)
+         sourceList = string.split(allSources, ',')
+         i = 0
+         videoname = [''] * 30
+         urls = [''] * 30
+         while i < len(sourceList) - 1:
+             tmp = string.split(sourceList[i], ';')
+             print 'This is the name: ' + tmp[0] + ' and this is the url: ' + tmp[1]
+             videoname[i] = tmp[0]
+             urls[i] = tmp[1]
+             print 'This is the name: ' + videoname[i] + ' and this is the url: ' + urls[i]
+             i += 1
 
+         #save list of urls to later be stacked when user selects part
+         is_part_one = videoname[i-1].rfind('Part 1')
+         print 'TEST**** %i'  % is_part_one
+         if is_part_one != -1:
+             name = videoname[i-1].replace('Part 1', 'Multiple Parts')
+             addExecute(name,url,199,icon)
+
+     else:
+         addExecute(name,url,get_default_action(),icon)
 
 
 def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
@@ -1525,6 +1527,8 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
      sourcestring='Source #'+sourcenumber
      checkforsource = re.search(sourcestring, scrap)
      
+     sourceListFile=handle_file('sourceList','')
+
      #if source exists proceed.
      if checkforsource is not None:
           #print 'Source #'+sourcenumber+' exists'
@@ -1550,7 +1554,9 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
                         if ismega is not None:
                               partname='Part '+partnum
                               fullname=sourcestring+' | MU | '+partname
-                              Add_Multi_Parts(fullname,url,megapic)
+                              appendfile(sourceListFile, fullname + '; ' + url + ',\n')
+                              Add_Multi_Parts(fullname,url,megapic,sourcenumber)
+                              #Add_Multi_Parts(fullname,url,megapic)
                         elif is2shared is not None and hide2shared == 'false':
                              #print sourcestring+' is hosted by 2shared' 
                              part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
@@ -2021,11 +2027,13 @@ def play_with_watched(url, listitem, mypath):
     global currentTime
     global totalTime
     global watched_percent
+    global finalPart
     
+    finalPart = 1
     watched_percent = get_watched_percent()    
 
     mplayer = MyPlayer()
-    mplayer.play(url, listitem, mypath)
+    mplayer.play(url, listitem)
 
     try:
         totalTime = mplayer.getTotalTime()
@@ -2049,6 +2057,106 @@ def get_watched_percent():
      return watched_values[int(selfAddon.getSetting('watched-percent'))]
 
 
+def Stream_Source_with_parts(name,url):
+    global currentTime
+    global totalTime
+    global watched_percent
+    global finalPart
+    #get the list of sources
+    sourceListFile=handle_file('sourceList','')
+    allSources = openfile(sourceListFile)
+    sourceList = string.split(allSources, ',')
+    #Find the index of part 1
+    name = name.replace('Multiple Parts', 'Part 1')
+    name = name.strip()
+    print name
+    i = 0
+    index = -1
+    partlist = []
+    #Iterate through the sourceList and determine which parts are from the same source.
+    while i < len(sourceList)-1:
+        if sourceList[i].startswith(name):
+            index = i
+            #store the source number and part number
+            source_num_tmp = re.search('Source #(.+?) |',sourceList[index])
+            source_num = source_num_tmp.group(1)
+            part_num_tmp = re.search('Part (.+?)',sourceList[index])
+            part_num = part_num_tmp.group(1)
+            print 'Playing the following source and part: ' + str(source_num) + ' : ' + str(part_num)
+            #check for additional parts
+        elif index != -1:
+            part = sourceList[i]
+            source_num_tmp = re.search('Source #(.+?) |',part.strip())
+            source_num2 = source_num_tmp.group(1)
+            part_num_tmp = re.search('Part (.+?)',part.strip())
+            part_num2 = part_num_tmp.group(1)
+            if source_num2 == source_num:
+                #part is from the same source so add it to the partlist to be played.
+                print 'This part is from the same source! ' + part
+                partlist.append(part)
+        i += 1
+    ###
+    watched_percent = get_watched_percent()
+    link=Handle_Vidlink(url)
+    listitem=Item_Meta(name)
+    print '--- Attempting to stream file: ' + str(link) + ' from url: ' + str(url)
+     
+    mplayer = MyPlayer()
+    mplayer.play(link[0], listitem)
+
+
+    # first part is playing... now wait to start 2nd part
+    try:
+        totalTime = mplayer.getTotalTime()
+    except Exception:
+        xbmc.sleep(20000) #wait 20 seconds until the video is playing before getting totalTime
+        try:
+            totalTime = mplayer.getTotalTime()
+        except Exception:
+            return
+    while(1):
+        #Set the currentTime and totalTime to arbitrary numbers. This keeps it from pre-maturely starting the 3rd part immediately after the 2nd part starts
+        # using currentTime and totalTime from the first part.
+        currentTime = 0
+        totalTime = 20
+        try:
+            #Try to get the totalTime and currentTime from the player... If there is an exception and nothing is retrieved set it back to 20 to avoid moving
+            # on to the next part.
+            totalTime = mplayer.getTotalTime()
+            if totalTime == 0:
+                totalTime = 20
+            currentTime= mplayer.getTime()
+        except Exception:
+            print 'XBMC is not currently playing a media file'
+        #start next part
+        #When the current part has less than 3 seconds remaining get ready to start next part.
+        if currentTime > totalTime-3:
+            xbmc.sleep(4000)
+            #Check the part list to see if there are parts remaining
+            try:
+                tmp = string.split(partlist[0], ';')
+            except IndexError:
+                #IndexError means there are no more parts so we should break
+                print 'There are no parts remaining!'
+                break
+            #Retrieve the file name and url from partlist.
+            videoname = tmp[0]
+            videourl = tmp[1].strip()
+            #so the player knows that after this part mark watched
+            if len(partlist) == 1:
+                print 'This is the final part!'
+                finalPart = 1
+            link2=Handle_Vidlink(videourl)
+            listitem=Item_Meta(videoname)
+            print '********* Attempting to stream the next part: %s' % link2
+            
+            mplayer = MyPlayer()
+            mplayer.play(link2[0], listitem)
+            #Remove part that is now playing from the partlist
+            partlist.pop(0)
+        xbmc.sleep(500) 
+
+
 class MyPlayer (xbmc.Player):
      def __init__ (self):
         self.dialog = None
@@ -2056,19 +2164,9 @@ class MyPlayer (xbmc.Player):
         
         print 'Initializing myPlayer...'
         
-     def play(self, url, listitem, mypath, seeking=False):
+     def play(self, url, listitem):
         print 'Now im playing... '+url
 
-#        if seeking == 'true':
-#            start_time = time.time()
-#            dlThread = threading.Thread(target=urllib.urlretrieve, args=(url, mypath, lambda nb, bs, fs: _dlhook(nb, bs, fs, self, start_time)))
-#            dlThread.start()
-#            handle_wait(10,'Buffering Video','Pre-loading video to allow seeking capabilities.')
-#            thread2 = threading.Thread(target=xbmc.Player(xbmc.PLAYER_CORE_DVDPLAYER).play, args=(mypath, listitem))
-#            thread2.start()       
-#        else:
-#            xbmc.Player(xbmc.PLAYER_CORE_DVDPLAYER).play(url, listitem)
-            
         xbmc.Player(xbmc.PLAYER_CORE_DVDPLAYER).play(url, listitem)            
         
      def isplaying(self):
@@ -2076,27 +2174,31 @@ class MyPlayer (xbmc.Player):
 
      def onPlayBackEnded(self):
         global currentTime
-        global totalTime      
-        percentWatched = currentTime / totalTime
-        print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
-        if percentWatched >= watched_percent:
-            #set watched
-            vidname=handle_file('videoname','open')
-            video = get_video_name(vidname)
-            print 'Auto-Watch - Setting %s to watched' % video
-            ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+        global totalTime
+        global finalPart
+        if finalPart == 1:
+            percentWatched = currentTime / totalTime
+            print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
+            if percentWatched >= watched_percent:
+                #set watched
+                vidname=handle_file('videoname','open')
+                video = get_video_name(vidname)
+                print 'Auto-Watch - Setting %s to watched' % video
+                ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
 
      def onPlayBackStopped(self):
         global currentTime
         global totalTime
-        percentWatched = currentTime / totalTime
-        print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
-        if percentWatched >= watched_percent and totalTime > 1:
-            #set watched
-            vidname=handle_file('videoname','open')
-            video = get_video_name(vidname)
-            print 'Auto-Watch - Setting %s to watched' % video            
-            ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+        global finalPart
+        if finalPart == 1:
+            percentWatched = currentTime / totalTime
+            print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
+            if percentWatched >= watched_percent and totalTime > 1:
+                #set watched
+                vidname=handle_file('videoname','open')
+                video = get_video_name(vidname)
+                print 'Auto-Watch - Setting %s to watched' % video            
+                ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
 
 ############## End MyPlayer Class ################
 
@@ -3379,6 +3481,10 @@ elif mode==110:
 elif mode==111:
         print ""+url
         DELETE_FROM_FAVOURITES(name,url)
+
+elif mode==199:
+        print ""+url
+        Stream_Source_with_parts(name,url)
 
 elif mode==200:
         print ""+url      
