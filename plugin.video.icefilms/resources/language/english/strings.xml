@@ -25,8 +25,9 @@
     <string id="30400">Enable Automatic View</string>
     <string id="30401">Movies View</string>
     <string id="30402">TV Shows View</string>
-    <string id="30403">Episodes View</string>
-    <string id="30404">Default View</string>
+    <string id="30403">Seasons View</string>
+    <string id="30404">Episodes View</string>
+    <string id="30405">Default View</string>
     
     <!-- Meta Data -->
     <string id="30600">Enable MetaData</string>
@@ -35,8 +36,9 @@
 
     <!-- Miscellaneous -->
     <string id="30500">Icefilms Site URL</string>
-    <string id="30501">Default Play Action</string>
-    <string id="30502">Auto-Watch Percentage</string>
-    <string id="30503">Allow Video Seeking - Requires Fast Connection</string>
+    <string id="30501">Auto-Watch Percentage</string>
+    <string id="30502">Default Play Action</string>
+    <string id="30503">Enable Video Seeking - Fast Forward & Rewind</string>
+    <string id="30504">Buffer Delay (seconds)</string>
 >>>>>>> stable
 </strings>
