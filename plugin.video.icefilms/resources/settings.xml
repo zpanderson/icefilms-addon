@@ -4,8 +4,8 @@
   	<setting id="flatten-single-season" type="bool" label="30103" default="true"/>
   	<setting id="flatten-source-type" type="bool" label="30104" default="true"/>
   	<setting id="hide-2shared" type="bool" label="30105" default="true"/>
-  	<setting id="stack-multi-part" type="bool" label="30106" default="true" visible="false"/>      
-	  <setting id="display-show-eps" type="bool" label="30107" default="false" visible="false"/>
+  	<setting id="stack-multi-part" type="bool" label="30106" default="false"/>      
+	  <setting id="display-show-eps" type="bool" label="30107" default="true"/>
    </category>
    <category label="Megaupload">
 	<setting id="megaupload-account" type="bool" label="30200" default="false"/>
@@ -16,8 +16,8 @@
    </category>
    <category label="Meta Data">
   	<setting id="use-meta" type="bool" label="30600" default="true"/>
-	  <setting id="movies-fanart" type="bool" label="30601" default="false" enable="!eq(-1,false)"/>
-	  <setting id="tvshows-fanart" type="bool" label="30602" default="false" enable="!eq(-2,false)"/>
+	  <setting id="movie-fanart" type="bool" label="30601" default="false" enable="!eq(-1,false)"/>
+	  <setting id="tv-fanart" type="bool" label="30602" default="false" enable="!eq(-2,false)"/>
    </category>
    <category label="Downloads">
     <setting id="download-folder" type="folder" label="30300" default=""/>
@@ -33,9 +33,12 @@
 	<setting id="movies-view" type="number" label="30401" default="503" enable="!eq(-1,false)"/>
 	<setting id="tvshows-view" type="number" label="30402" default="503" enable="!eq(-2,false)"/>
 	<setting id="episodes-view" type="number" label="30403" default="504" enable="!eq(-3,false)"/>
+	<setting id="default-view" type="number" label="30404" default="50"/>
    </category>
    <category label="Miscellaneous">
       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
-      <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
+      <setting id="play-action" type="enum" label="30501" values="Watch Stream|Download|Download and Watch" default="Watch Stream"/>
+      <setting id="watched-percent" label="30502" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
+	    <setting id="video-seeking" type="bool" label="30503" default="false" visible="false"/>
    </category>   
 </settings>
