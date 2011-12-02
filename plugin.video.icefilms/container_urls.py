@@ -12,32 +12,27 @@ def get():
           #date updated
           containers['date'] = '9/Feb/2011'
           
-          #--- Meta Container ---# 
+          #--- Database Meta Container ---# 
           #containers['db_url'] = 'http://www.megaupload.com/?d=U1RTPGQS'
-          containers['db_url'] = 'http://www.megaupload.com/?d=69UXI5Q2'
+          containers['db_url'] = 'http://www.megaupload.com/?d=YD7U5M71'
                     
           #--- Movie Meta Container ---# 
 
           #basic container        
-          containers['mv_covers_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'
-          containers['mv_cover_size'] = 230
+          containers['mv_covers_url'] = 'http://www.megaupload.com/?d=X8CMRAK2'
+          containers['mv_cover_size'] = 265
           
-          containers['mv_backdrops_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'
-          containers['mv_backdrop_size'] = 230
+          containers['mv_backdrop_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'
+          containers['mv_backdrop_size'] = 2600
           
-          #additional container
-          containers['mv_add_url'] = ''
-          containers['mv_add_size'] = 0
-
-
           #--- TV   Meta  Container ---#
 
           #basic container       
-          containers['tv_covers_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'        
-          containers['tv_cover_size'] = 230
+          containers['tv_covers_url'] = 'http://www.megaupload.com/?d=QJMWHCQW'        
+          containers['tv_cover_size'] = 530
 
-          containers['tv_backdrops_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'
-          containers['tv_backdrops_size'] = 230
+          containers['tv_backdrop_url'] = 'http://www.megaupload.com/?d=CE07S1EJ'
+          containers['tv_backdrop_size'] = 832
           
           
           #additional container
