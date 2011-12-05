@@ -115,6 +115,7 @@ def Notify(typeq,title,message,times):
 #paths etc need sorting out. do for v1.1.0
 icedatapath = 'special://profile/addon_data/plugin.video.icefilms'
 metapath = icedatapath+'/mirror_page_meta_cache'
+transmetapath = xbmcpath(metapath,'')
 downinfopath = icedatapath+'/downloadinfologs'
 transdowninfopath = xbmcpath(downinfopath,'')
 translatedicedatapath = xbmcpath(icedatapath,'')
@@ -304,9 +305,10 @@ def ContainerStartup():
 
      #get containers dict from container_urls.py
      containers = container_urls.get()  
+
+     work_path = mc.work_path
                             
      if not meta_installed:
-         work_path = mc.work_path                   
 
          #Offer to download the metadata
          dialog = xbmcgui.Dialog()
@@ -330,7 +332,7 @@ def ContainerStartup():
                    meta_installed = mh.check_meta_installed(addon_id)
               
               elif get_db_zip==False or get_cover_zip==False:
-                   Notify('small','Metacontainer Installation Failure','','') 
+                   Notify('small','Metacontainer Installation Failure','','')
 
      if movie_fanart =='true' and meta_installed:
          if meta_installed['movie_backdrops'] == 'false':
@@ -338,9 +340,15 @@ def ContainerStartup():
              ret = dialog.yesno('Download Movie Fanart?', 'There is a metadata container avaliable.','Install it to get background images for Movies.', 'Would you like to get it? Its a large '+str(containers['mv_backdrop_size'])+'MB download.','Remind me later', 'Install')
              if ret==True:
                  #download dem files
-                 #get_db_zip=Zip_DL_and_Install(containers['mv_backdrop_url'],'movie_images', work_path, mc)
-                 #mh.update_meta_installed(addon_id, movie_backdrops='true')
-                 print 'Download movie fanart'
+                 get_backdrop1_zip=Zip_DL_and_Install(containers['mv_backdrop_1_url'],'movie_images', work_path, mc)
+                 get_backdrop2_zip=Zip_DL_and_Install(containers['mv_backdrop_2_url'],'movie_images', work_path, mc)
+                 get_backdrop3_zip=Zip_DL_and_Install(containers['mv_backdrop_3_url'],'movie_images', work_path, mc)
+                 
+                 if get_backdrop1_zip and get_backdrop2_zip and get_backdrop3_zip:
+                     mh.update_meta_installed(addon_id, movie_backdrops='true')
+                 else:
+                     print '******* ERROR - Movie backrop install failed'
+                     Notify('small','Movie Backdrop Installation Failure','','')
          else:
              print 'Movie backdrops already installed'
 
@@ -350,9 +358,14 @@ def ContainerStartup():
              ret = dialog.yesno('Download TV Show Fanart?', 'There is a metadata container avaliable.','Install it to get background images for TV Shows.', 'Would you like to get it? Its a large '+str(containers['tv_backdrop_size'])+'MB download.','Remind me later', 'Install')
              if ret==True:
                  #download dem files
-                 #get_db_zip=Zip_DL_and_Install(containers['tv_backdrop_url'],'tv_images', work_path, mc)
-                 #mh.update_meta_installed(addon_id, movie_backdrops='true')
-                 print 'Download movie fanart'
+                 get_backdrop_zip=Zip_DL_and_Install(containers['tv_backdrop_url'],'tv_images', work_path, mc)
+                 
+                 if get_backdrop_zip:
+                     mh.update_meta_installed(addon_id, tv_backdrops='true')
+                 else:
+                     print '******* ERROR - TV backrop install failed'
+                     Notify('small','TV Backdrop Installation Failure','','')                     
+
          else:
              print 'TV backdrops already installed'
 
@@ -383,8 +396,7 @@ def Zip_DL_and_Install(url,installtype,work_folder,mc=metacontainers.MetaContain
           print 'zip already downloaded, attempting extraction'                   
           
      print '!!!!handling meta install!!!!'
-     install=mc.install_metadata_container(filepath, installtype)
-     return True
+     return mc.install_metadata_container(filepath, installtype)
 
 
 def Startup_Routines():
@@ -392,6 +404,7 @@ def Startup_Routines():
      # avoid error on first run if no paths exists, by creating paths
      if not os.path.exists(translatedicedatapath): os.makedirs(translatedicedatapath)
      if not os.path.exists(transdowninfopath): os.makedirs(transdowninfopath)
+     if not os.path.exists(transmetapath): os.makedirs(transmetapath)
          
      #force refresh addon repositories, to check for updates.
      #xbmc.executebuiltin('UpdateAddonRepos')
@@ -1794,8 +1807,13 @@ def GetURL(url, params = None, referrer = ICEFILMS_REFERRER, cookie = None, save
 
      # avoid Python >= 2.5 ternary operator for backwards compatibility
      # http://wiki.xbmc.org/index.php?title=Python_Development#Version
-     response = urllib2.urlopen(req)
-     body = response.read()
+     try:
+         response = urllib2.urlopen(req)
+         body = response.read()
+     except Exception, e:
+         print '****** ERROR: %s' % e
+         Notify('big','Error Requesting Site','An error has occured while communicating with Icefilms:\n\n %s','' % e)
+         body = ''
 
      if save_cookie:
          setcookie = response.info().get('Set-Cookie', None)
