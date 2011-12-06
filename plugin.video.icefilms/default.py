@@ -4,12 +4,6 @@
 
 #All code Copyleft (GNU GPL v2) Anarchintosh and icefilms-xbmc team
 
-# Still to-do (Low/Normal/High priority): 
-#    - (L) Automatically watched status 
-#    - (H) Create metacontainer with data for everything 
-# Quite convoluted code. Needs a good cleanup for v1.1.0
-
-
 ############### Imports ############################
 #standard module imports
 import sys,os
@@ -326,12 +320,12 @@ def ContainerStartup():
                    Notify('small','Metacontainer Installation Success','','')
                    
                    #Update meta addons table to indicate meta pack was installed with covers
-                   mh.insert_meta_installed(addon_id, covers='true')
+                   mh.insert_meta_installed(addon_id, last_update=containers['date'], movie_covers='true', tv_covers='true')
                    
                    #Re-check meta_installed
                    meta_installed = mh.check_meta_installed(addon_id)
               
-              elif get_db_zip==False or get_cover_zip==False:
+              elif get_db_zip==False or get_movie_cover_zip==False or get_tv_cover_zip==False:
                    Notify('small','Metacontainer Installation Failure','','')
 
      if movie_fanart =='true' and meta_installed:
@@ -1195,6 +1189,7 @@ def TVSEASONS(url, imdb_id):
         
         ep_list = str(BeautifulSoup(source).find("span", { "class" : "list" } ))
 
+        showname = CLEANUP_FOR_META(showname)
         season_list=re.compile('<h3><a name.+?></a>(.+?)<a.+?</a></h3>').findall(ep_list)
         listlength=len(season_list)
         if listlength > 0:
@@ -1303,6 +1298,7 @@ def LOADMIRRORS(url):
          Notify('big','Error Loading Sources','An error occured loading sources.\nCheck your connection and/or the Icefilms site.','')
          callEndOfDirectory = False
          return
+     
      try:
          save(videonamefile,namematch[0])
      except:
@@ -1364,7 +1360,10 @@ def LOADMIRRORS(url):
                print "FAILED TO SAVE TV SHOW FILE PATH!"
      else:
           
-          save(mediapathfile,'Movies/'+namematch[0])
+          try:
+              save(mediapathfile,'Movies/'+namematch[0])
+          except:
+              pass
 
      #---------------End phantom metadata getting stuff --------------
 
@@ -1814,6 +1813,7 @@ def GetURL(url, params = None, referrer = ICEFILMS_REFERRER, cookie = None, save
          print '****** ERROR: %s' % e
          Notify('big','Error Requesting Site','An error has occured while communicating with Icefilms:\n\n %s','' % e)
          body = ''
+         pass
 
      if save_cookie:
          setcookie = response.info().get('Set-Cookie', None)
@@ -3054,6 +3054,7 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
                 season_num = int(se.group(1))
 
             if episode_num >= 0:
+                showname = CLEANUP_FOR_META(showname)
                 meta=metaget.get_episode_meta(showname, imdb_id, season_num, episode_num)
                       
             if meta and meta_installed:
