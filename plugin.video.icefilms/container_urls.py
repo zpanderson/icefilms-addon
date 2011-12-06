@@ -10,7 +10,7 @@ def get():
           containers = {} 
 
           #date updated
-          containers['date'] = 'Dec. 2011'
+          containers['date'] = 'Dec 2011'
           
           #--- Database Meta Container ---# 
           containers['db_url'] = 'http://www.megaupload.com/?d=YD7U5M71'
