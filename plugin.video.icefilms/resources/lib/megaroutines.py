@@ -119,9 +119,9 @@ class megaupload:
         #returns 'free' or 'premium' if logged in
         #returns 'none' if not logged in
         
-        login = re.search('Welcome', source)
-        premium = re.search('flashvars.status = "premium";', source)
-        platinum = re.search('flashvars.status = "platinum";', source)       
+        login = re.search('<div class="user_info">Welcome <', source)
+        premium = re.search('<div class="stars_3"></div>', source)
+        platinum = re.search('<div class="crown"></div>', source)       
 
         if login is not None:
             if premium is not None:
@@ -206,11 +206,12 @@ class megaupload:
    def get_filelink(self,source,aviget=False):
           # load megaupload page and scrapes and adds videolink, passes through partname.  
           #print 'getting file link....'
-
+          
           #try getting the premium link. if it returns none, use free link scraper.
-          match1=re.compile('<a href="(.+?)" class="down_ad_butt1">').findall(source)
-          if str(match1)=='[]':
-               match2=re.compile('id="downloadlink"><a href="(.+?)" class=').findall(source)
+          match1=re.compile('<a href="(.+?)" class="download_premium_but">').findall(source)
+          premlink = re.search('http', str(match1))
+          if not premlink:
+               match2=re.compile('<a href="(.+?)" class="download_regular_usual"').findall(source)
                url=match2[0]
           else:
                url=match1[0]
@@ -305,7 +306,7 @@ def new_check_login(source):
 		#returns 'none' if not logged in
 
 		login = re.search('Welcome', source)
-		premium = re.search('flashvars.status = "premium";', source)		
+		premium = re.search('<div class="stars_3"></div>', source)		
 
 		if login is not None:
 			if premium is not None:
