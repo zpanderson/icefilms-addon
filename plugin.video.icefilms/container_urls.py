@@ -22,7 +22,7 @@ def get():
           containers['mv_cover_size'] = 265
           
           containers['mv_backdrop_1_url'] = 'http://www.megaupload.com/?d=14CORMMR'
-          containers['mv_backdrop_2_url'] = 'http://www.megaupload.com/?d=E1RNYFHC'
+          containers['mv_backdrop_2_url'] = 'http://www.megaupload.com/?d=8ZUAYWS0'
           containers['mv_backdrop_3_url'] = 'http://www.megaupload.com/?d=03Z7J96D'
           containers['mv_backdrop_size'] = 2600
           
