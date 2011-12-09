@@ -39,7 +39,7 @@ sys.path.append( os.path.join( icepath, 'resources', 'lib' ) )
 
 #imports of things bundled in the addon
 import container_urls,clean_dirs,htmlcleaner,megaroutines
-from metahandler import metahandlers, metacontainers
+from metahandler import metahandlers
 from cleaners import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
@@ -72,13 +72,23 @@ callEndOfDirectory = True
 #Variable for multi-part
 finalPart = 0
 
+#Params
+url=None
+name=None
+mode=None
+imdbnum=None
+dirmode=None
+season_num=None
+episode_num=None
+video_type=None
+
 ####################################################
 
 def xbmcpath(path,filename):
      translatedpath = os.path.join(xbmc.translatePath( path ), ''+filename+'')
      return translatedpath
   
-def Notify(typeq,title,message,times):
+def Notify(typeq,title,message,times, line2='', line3=''):
      #simplified way to call notifications. common notifications here.
      if title == '':
           title='Icefilms Notification'
@@ -89,7 +99,7 @@ def Notify(typeq,title,message,times):
           xbmc.executebuiltin("XBMC.Notification("+title+","+message+","+times+","+smallicon+")")
      elif typeq == 'big':
           dialog = xbmcgui.Dialog()
-          dialog.ok(' '+title+' ', ' '+message+' ')
+          dialog.ok(' '+title+' ', ' '+message+' ', line2, line3)
      elif typeq == 'megaalert1':
           ip = xbmc.getIPAddress()
           title='Megaupload Alert for IP '+ip
@@ -255,6 +265,7 @@ def LoginStartup():
      
      if Account == 'false':
           print 'Account: '+'no account set'
+          return True
 
      elif Account == 'true':
           #check for megaupload login and do it
@@ -278,16 +289,19 @@ def LoginStartup():
               if megapass == '' or megauser == '':
                    print 'no login details specified, using no account'
                    Notify('big','Megaupload','Login failed. Megaupload will load with no account.','')
+              return True
           except Exception, e:
               print '**** MegaUpload Error: %s' % e
-              Notify('big','Megaupload','Failed to connect with MegaUpload - Please check your internet connection.','')
+              Notify('big','Megaupload Failed','Failed to connect with MegaUpload.', '', '', 'Please check your internet connection.')
               pass
+              return False
               
                                 
 def ContainerStartup():
 
      #Initialize MetaHandler and MetaContainer classes
      #MetaContainer will clean up from previous installs, so good idea to always initialize at addon startup
+     from metahandler import metacontainers
      mh=metahandlers.MetaData(preparezip=prepare_zip)
      mc = metacontainers.MetaContainer()
 
@@ -364,7 +378,7 @@ def ContainerStartup():
              print 'TV backdrops already installed'
 
 
-def Zip_DL_and_Install(url,installtype,work_folder,mc=metacontainers.MetaContainer()):
+def Zip_DL_and_Install(url,installtype,work_folder,mc):
      ####function to download and install a metacontainer. ####
 
      url = str(url)
@@ -377,7 +391,6 @@ def Zip_DL_and_Install(url,installtype,work_folder,mc=metacontainers.MetaContain
      #define the path to save it to
      filepath=os.path.normpath(os.path.join(work_folder,thefile[1]))
 
-     print 'FILEPATH: ',filepath
      filepath_exists=os.path.exists(filepath)
      #if zip does not already exist, download from url, with nice display name.
      if filepath_exists==False:
@@ -407,11 +420,10 @@ def Startup_Routines():
      DLDirStartup()
 
      # Run the login startup routines
-     LoginStartup()
+     if LoginStartup():
      
-
-     # Run the container checking startup routines, if enable meta is set to true
-     if meta_setting=='true': ContainerStartup()
+         # Run the container checking startup routines, if enable meta is set to true
+         if meta_setting=='true': ContainerStartup()
 
 
 def create_meta_pack():
@@ -1224,9 +1236,8 @@ def TVSEASONS(url, imdb_id):
 def TVEPISODES(name,url=None,source=None,imdb_id=None):
     #Save the season name for use in the special download directories.
     save(handle_file('mediatvseasonname'),name)
-    print 'episodes url    --->' + str(url)
-    print 'episodes source --->' + str(source)
-    #If source was'nt passed to function, open the file it should be saved to.
+
+    #If source wasn't passed to function, open the file it should be saved to.
     if source is None:
         source = openfile(handle_file('episodesrc'))
         
@@ -1496,14 +1507,15 @@ def GETMIRRORS(url,link):
 
                 
 def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
+    	
         if dvdrip == 1:
-                addDir('DVDRip',url,101,os.path.join(art,'source_types','dvd.png'))
+                addDir('DVDRip',url,101,os.path.join(art,'source_types','dvd.png'), imdb=imdbnum)
         if hd720p == 1:
-                addDir('HD 720p',url,102,os.path.join(art,'source_types','hd720p.png'))
+                addDir('HD 720p',url,102,os.path.join(art,'source_types','hd720p.png'), imdb=imdbnum)
         if dvdscreener == 1:
-                addDir('DVD Screener',url,103,os.path.join(art,'source_types','dvdscreener.png'))
+                addDir('DVD Screener',url,103,os.path.join(art,'source_types','dvdscreener.png'), imdb=imdbnum)
         if r5r6 == 1:
-                addDir('R5/R6 DVDRip',url,104,os.path.join(art,'source_types','r5r6.png')) 
+                addDir('R5/R6 DVDRip',url,104,os.path.join(art,'source_types','r5r6.png'), imdb=imdbnum)
 
 def Add_Multi_Parts(name,url,icon,sourcenumber):
      StackMulti = selfAddon.getSetting('stack-multi-part')
@@ -1809,20 +1821,22 @@ def GetURL(url, params = None, referrer = ICEFILMS_REFERRER, cookie = None, save
      try:
          response = urllib2.urlopen(req)
          body = response.read()
+
+         if save_cookie:
+             setcookie = response.info().get('Set-Cookie', None)
+             print "Set-Cookie: %s" % repr(setcookie)
+             if setcookie:
+                 setcookie = re.search('([^=]+=[^=;]+)', setcookie).group(1)
+                 body = body + '<cookie>' + setcookie + '</cookie>'
+    
+         response.close()
+
      except Exception, e:
          print '****** ERROR: %s' % e
-         Notify('big','Error Requesting Site','An error has occured while communicating with Icefilms:\n\n %s','' % e)
+         Notify('big','Error Requesting Site','An error has occured communicating with Icefilms', '', '', 'Check your connection and the Icefilms site.' )
          body = ''
          pass
 
-     if save_cookie:
-         setcookie = response.info().get('Set-Cookie', None)
-         print "Set-Cookie: %s" % repr(setcookie)
-         if setcookie:
-             setcookie = re.search('([^=]+=[^=;]+)', setcookie).group(1)
-             body = body + '<cookie>' + setcookie + '</cookie>'
-
-     response.close()
      return body
 
 def WaitIf():
@@ -1936,14 +1950,14 @@ def do_wait(account):
      # do the necessary wait, with  a nice notice and pre-set waiting time. I have found the below waiting times to never fail.
      
      if account == 'premium':    
-          return handle_wait(5,'Megaupload','Loading video with your *Premium* account.')
+          return handle_wait(1,'Megaupload','Loading video with your *Premium* account.')
              
      elif account == 'free':
-          return handle_wait(26,'Megaupload Free User','Loading video with your free account.')
+          return handle_wait(61,'Megaupload Free User','Loading video with your free account.')
 
      else:
-          return handle_wait(46,'Megaupload','Loading video.')
-    
+          return handle_wait(61,'Megaupload','Loading video.')
+
 
 def handle_wait(time_to_wait,title,text):
 
@@ -2202,7 +2216,7 @@ class MyPlayer (xbmc.Player):
                 vidname=handle_file('videoname','open')
                 video = get_video_name(vidname)
                 print 'Auto-Watch - Setting %s to watched' % video
-                ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+                ChangeWatched(imdbnum, video_type, video['name'], season_num, episode_num, video['year'], watched=7)
 
      def onPlayBackStopped(self):
         global currentTime
@@ -2216,7 +2230,7 @@ class MyPlayer (xbmc.Player):
                 vidname=handle_file('videoname','open')
                 video = get_video_name(vidname)
                 print 'Auto-Watch - Setting %s to watched' % video            
-                ChangeWatched(imdbnum, type, video['name'], season, episode, video['year'], watched=7)
+                ChangeWatched(imdbnum, video_type, video['name'], season_num, episode_num, video['year'], watched=7)
 
 ############## End MyPlayer Class ################
 
@@ -2319,7 +2333,7 @@ def Download_And_Play(name,url):
     mypath=Get_Path(name,vidname)
      
     print 'MYPATH: ',mypath
-    if mypath is 'path not set':
+    if mypath == 'path not set':
         Notify('Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','','')
         return
 
@@ -2494,7 +2508,7 @@ def Download_Source(name,url):
     mypath=Get_Path(name,vidname)
            
     if mypath == 'path not set':
-        Notify('other', 'Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','')    
+        Notify('Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','','')
     else:
         if os.path.isfile(mypath) is True:
             Notify('Download Alert','The video you are trying to download already exists!','','')
@@ -2646,7 +2660,7 @@ def addExecute(name,url,mode,iconimage):
     sysname = urllib.quote_plus(name)
     sysurl = urllib.quote_plus(url)
     
-    u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdbnum))  + "&videoType=" + type + "&season=" + str(season) + "&episode=" + str(episode)
+    u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdbnum))  + "&videoType=" + video_type + "&season=" + str(season_num) + "&episode=" + str(episode_num)
     ok=True
 
     liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
@@ -2684,7 +2698,6 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
      #handle adding context menus
      contextMenuItems = []
      
-     videoType = ''
      if mode == 12: # TV series
          videoType = 'tvshow'
      elif mode == 13: # TV Season
@@ -2693,9 +2706,16 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          videoType = 'episode'
      elif mode == 100: # movies
          videoType = 'movie'
+     else:
+     	   videoType = video_type
+     
+     season = ''
+     episode = ''
                  
-     season=''
-     episode=''
+     if season_num:
+         season = season_num
+     if episode_num:
+         episode = episode_num
 
      #handle adding meta
      if meta == False:
@@ -2787,14 +2807,15 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
 
      #print '          Mode=' + str(mode) + ' URL=' + str(url)
 
-     if mode in (12, 13, 100, 101, 102):
-         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType
-     elif mode == 14:
+     if mode == 14:
          if check_episode(name):
              episode_info = re.search('([0-9]+)x([0-9]+)', name)
              season = int(episode_info.group(1))
              episode = int(episode_info.group(2))
-         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(100) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb))  + "&videoType=" + videoType + "&season=" + str(season) + "&episode=" + str(episode)
+             mode = 100
+
+     if mode in (12, 13, 100, 101, 102, 103, 104):
+         u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname + "&imdbnum=" + urllib.quote_plus(str(imdb)) + "&videoType=" + videoType + "&season=" + str(season) + "&episode=" + str(episode)
      else:
          u = sys.argv[0] + "?url=" + sysurl + "&mode=" + str(mode) + "&name=" + sysname
      ok = True
@@ -3024,7 +3045,7 @@ def REFRESH(type, url,imdb_id,name,dirmode):
                 xbmc.executebuiltin("XBMC.Container.Refresh")           
 
                 
-def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_num=-1, totalitems=0):
+def get_episode(season, episode, imdb_id, url, metaget, tmp_season_num=-1, tmp_episode_num=-1, totalitems=0):
         # displays all episodes in the source it is passed.
         imdb_id = imdb_id.replace('t','')
    
@@ -3042,20 +3063,18 @@ def get_episode(season, episode, imdb_id, url, metaget, season_num=-1, episode_n
             r=re.search('(.+?) [(][0-9]{4}[)]',showname)
             if r:
                 showname = r.group(1)
-  
-            meta = {}
-                          
+                           
             #return the metadata dictionary
             ep = re.search('[0-9]+x([0-9]+)', episode)
             if ep: 
-                episode_num = int(ep.group(1))
+                tmp_episode_num = int(ep.group(1))
             se = re.search('Season ([0-9]{1,2})', season)
             if se:
-                season_num = int(se.group(1))
+                tmp_season_num = int(se.group(1))
 
-            if episode_num >= 0:
+            if meta_installed and tmp_episode_num >= 0:
                 showname = CLEANUP_FOR_META(showname)
-                meta=metaget.get_episode_meta(showname, imdb_id, season_num, episode_num)
+                meta=metaget.get_episode_meta(showname, imdb_id, tmp_season_num, tmp_episode_num)
                       
             if meta and meta_installed:
                 #add directories with meta
@@ -3079,7 +3098,6 @@ def find_meta_for_search_results(results, mode, search=''):
     
     if mode == 100:        
         for res in results:
-            print 'RES:', res
             name=res.title.encode('utf8')
             name=CLEANSEARCH(name)
                 
@@ -3280,14 +3298,6 @@ def get_params():
         return param
 
 params=get_params()
-url=None
-name=None
-mode=None
-imdbnum=None
-dirmode=None
-season=None
-episode=None
-type=None
 
 try:
         url=urllib.unquote_plus(params["url"])
@@ -3310,20 +3320,20 @@ try:
 except:
         pass
 try:
-        season=urllib.unquote_plus(params["season"])
+        season_num=urllib.unquote_plus(params["season"])
         #season=params["season"]
 except:
         pass
 try:
-        episode=urllib.unquote_plus(params["episode"])
+        episode_num=urllib.unquote_plus(params["episode"])
         #season=params["episode"]
 except:
         pass        
 try:
-        type=urllib.unquote_plus(params["videoType"])
+        video_type=urllib.unquote_plus(params["videoType"])
 except:
         pass
-print '==========================PARAMS:\nURL: %s\nNAME: %s\nMODE: %s\nIMDBNUM: %s\nMYHANDLE: %s\nPARAMS: %s' % ( url, name, mode, imdbnum, sys.argv[1], params )
+print '==========================PARAMS:\nURL: %s\nNAME: %s\nMODE: %s\nIMDBNUM: %s\nVIDEOTYPE: %s\nMYHANDLE: %s\nPARAMS: %s' % ( url, name, mode, imdbnum, video_type, sys.argv[1], params )
 
 if mode==None: #or url==None or len(url)<1:
         print ""
@@ -3338,8 +3348,8 @@ elif mode==998:
         SearchForTrailer(name, imdbnum, dirmode)
         
 elif mode==990:
-        print "Mode 990 (Change watched value) ******* name is " + str(name) + " *************  season is -> '"+season+"'" + " *************  episode is -> '"+episode+"'"
-        ChangeWatched(imdbnum, type, name, season, episode)
+        print "Mode 990 (Change watched value) ******* name is " + str(name) + " *************  season is -> '"+season_num+"'" + " *************  episode is -> '"+episode_num+"'"
+        ChangeWatched(imdbnum, video_type, name, season_num, episode_num)
  
 elif mode==50:
         print ""+url
