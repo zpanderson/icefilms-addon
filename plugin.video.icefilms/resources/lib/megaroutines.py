@@ -118,21 +118,15 @@ class megaupload:
         #feed me some megaupload page source
         #returns 'free' or 'premium' if logged in
         #returns 'none' if not logged in
-        
-        login = re.search('<div class="user_info">Welcome <', source)
-        premium = re.search('<div class="stars_3"></div>', source)
-        platinum = re.search('<div class="crown"></div>', source)       
-
-        if login is not None:
-            if premium is not None:
-                return 'premium'
-            elif premium is None:
-                if platinum is not None:
-                    return 'premium'
-                elif platinum is None:
-                    return 'free'
-        elif login is None:
-            return None
+              
+        if re.search('<div class="crown"></div>', source):
+            return 'platinum'
+        elif re.search('<div class="stars_', source):
+            return 'premium'
+        elif re.search('<div class="user_info">Welcome <', source):
+            return 'free'
+        else:
+            return 'none'
 
  
    def dls_limited(self):
@@ -293,7 +287,7 @@ def __doLogin(baseurl, cookiepath, username, password):
 
 		login = new_check_login(source)
 
-		if login == 'free' or login == 'premium':
+		if login in ('free', 'premium', 'platinum'):
 			cj.save(cookiepath)
 
                         return login
@@ -305,16 +299,14 @@ def new_check_login(source):
 		#returns 'free' or 'premium' if logged in
 		#returns 'none' if not logged in
 
-		login = re.search('Welcome', source)
-		premium = re.search('<div class="stars_3"></div>', source)		
-
-		if login is not None:
-			if premium is not None:
-				return 'premium'
-			elif premium is None:
-				return 'free'
-		elif login is None:
-			return None
+    if re.search('<div class="crown"></div>', source):
+        return 'platinum'
+    elif re.search('<div class="stars_', source):
+        return 'premium'
+    elif re.search('<div class="user_info">Welcome <', source):
+        return 'free'
+    else:
+        return 'none'
 
 # --------------- End dirty backport of the new non-mechanize login code. ----------------
 
