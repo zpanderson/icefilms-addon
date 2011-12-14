@@ -3,7 +3,7 @@
 	<extension point="xbmc.addon.repository" name="Icefilms Alpha/Beta Testing Repo">
 		<info compressed="false">https://github.com/Eldorados/icefilms-addon/raw/master/addons.xml</info>
 		<checksum>https://github.com/Eldorados/icefilms-addon/raw/master/addons.xml.md5</checksum>
-		<datadir zip="false">https://github.com/Eldorados/icefilms-addon/tree/master/</datadir>
+		<datadir zip="true">https://github.com/Eldorados/icefilms-addon/raw/master/repo/</datadir>
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<summary>This is used soley for alpha/beta testing Icefilms 1.1.0</summary>
