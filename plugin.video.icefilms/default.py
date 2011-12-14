@@ -1622,10 +1622,15 @@ def GetSource(id, args, cookie):
     paramsenc = urllib.urlencode(params)
     body = GetURL(ICEFILMS_AJAX, params = paramsenc, cookie = cookie)
     print 'response: %s' % body
-    source = re.search('url=(http[^&]+)', body).group(1)
-    url = urllib.unquote(source)
+    source = re.search('url=(http[^&]+)', body)
+    if source:
+        url = urllib.unquote(source)
+    else:
+        print 'GetSource - URL String not found'
+        url = ''
     print 'url: %s' % url
     return url
+
 
 def SOURCE(page, sources):
           # check for sources containing multiple parts or just one part
