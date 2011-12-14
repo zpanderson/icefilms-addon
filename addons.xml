@@ -46,4 +46,14 @@
     <platform>all</platform>
   </extension>
 </addon>
+
+<addon id="script.module.t0mm0.common" name="t0mm0's common stuff" version="0.0.1" provider-name="t0mm0">
+  <requires>
+    <import addon="xbmc.python" version="1.0" />
+  </requires>
+  <extension point="xbmc.python.module" library="lib" />
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+  </extension>
+</addon>
 </addons>
