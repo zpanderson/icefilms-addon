@@ -1948,8 +1948,11 @@ def Item_Meta(name):
 
 def do_wait(account):
      # do the necessary wait, with  a nice notice and pre-set waiting time. I have found the below waiting times to never fail.
-     
-     if account == 'premium':    
+
+     if account == 'platinum':    
+          return handle_wait(1,'Megaupload','Loading video with your *Platinum* account.')
+               
+     elif account == 'premium':    
           return handle_wait(1,'Megaupload','Loading video with your *Premium* account.')
              
      elif account == 'free':
@@ -3023,7 +3026,7 @@ def ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps=False, totalitems=0):
                 addDir(name,url,mode,'',imdb=imdb_id,totalItems=totalitems)
 
 
-def REFRESH(type, url,imdb_id,name,dirmode):
+def REFRESH(videoType, url,imdb_id,name,dirmode):
         #refresh info for a Tvshow or movie
                
         print 'In Refresh ' + str(sys.argv[1])
@@ -3041,7 +3044,7 @@ def REFRESH(type, url,imdb_id,name,dirmode):
                     year = r.group(2)
                 else:
                     year = ''
-                metaget.update_meta(type, name, imdb_id, year=year)
+                metaget.update_meta(videoType, name, imdb_id, year=year)
                 xbmc.executebuiltin("XBMC.Container.Refresh")           
 
                 
@@ -3141,8 +3144,12 @@ def SearchGoogle(search):
     gs = GoogleSearch(''+search+' site:http://www.youtube.com ')
     gs.results_per_page = 25
     gs.page = 0
-    results = gs.get_results()
-    
+    try:
+        results = gs.get_results()
+    except Exception, e:
+        print '***** Error: %s' % e
+        Notify('big','Google Search','Error encountered searching.','')
+        return None
     return results
                                
 def SearchForTrailer(search, imdb_id, type, manual=False):
@@ -3207,10 +3214,11 @@ def SearchForTrailer(search, imdb_id, type, manual=False):
         res_name.append('Nothing Found. Thanks!!!')
 
 
-def ChangeWatched(imdb_id, videoType, name, season, episode, year='', watched=''):
+def ChangeWatched(imdb_id, videoType, name, season, episode, year='', watched='', refresh=False):
     metaget=metahandlers.MetaData(preparezip=prepare_zip)
     metaget.change_watched(videoType, name, imdb_id, season=season, episode=episode, year=year, watched=watched)
-    xbmc.executebuiltin("XBMC.Container.Refresh")
+    if refresh:
+        xbmc.executebuiltin("XBMC.Container.Refresh")
 
 
 def addLocal(name,filename, listitem=False):
@@ -3341,7 +3349,7 @@ if mode==None: #or url==None or len(url)<1:
 
 elif mode==999:
         print "Mode 999 ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
-        REFRESH(type, url,imdbnum,name,dirmode)
+        REFRESH(video_type, url,imdbnum,name,dirmode)
 
 elif mode==998:
         print "Mode 998 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
@@ -3349,7 +3357,7 @@ elif mode==998:
         
 elif mode==990:
         print "Mode 990 (Change watched value) ******* name is " + str(name) + " *************  season is -> '"+season_num+"'" + " *************  episode is -> '"+episode_num+"'"
-        ChangeWatched(imdbnum, video_type, name, season_num, episode_num)
+        ChangeWatched(imdbnum, video_type, name, season_num, episode_num, refresh=True)
  
 elif mode==50:
         print ""+url
