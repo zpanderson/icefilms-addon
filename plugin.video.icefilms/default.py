@@ -1267,11 +1267,13 @@ def TVEPLINKS(source, season, imdb_id):
     if meta_setting=='true':
         #initialise meta class before loop
         metaget=metahandlers.MetaData(preparezip=prepare_zip)
+        meta_installed = metaget.check_meta_installed(addon_id)
     else:
         metaget=False
+        meta_installed=False
     for url,name in match:
             print " TVepLinks name " + name           
-            get_episode(season, name, imdb_id, url, metaget, totalitems=len(match)) 
+            get_episode(season, name, imdb_id, url, metaget, meta_installed, totalitems=len(match)) 
     
     # Enable library mode & set the right view for the content
     setView('episodes', 'episodes-view')
@@ -1625,7 +1627,7 @@ def GetSource(id, args, cookie):
     print 'response: %s' % body
     source = re.search('url=(http[^&]+)', body)
     if source:
-        url = urllib.unquote(source)
+        url = urllib.unquote(source.group(1))
     else:
         print 'GetSource - URL String not found'
         url = ''
@@ -2234,7 +2236,7 @@ class MyPlayer (xbmc.Player):
         if finalPart == 1:
             percentWatched = currentTime / totalTime
             print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
-            if percentWatched >= watched_percent and totalTime > 1:
+            if percentWatched <= watched_percent and totalTime > 1:
                 #set watched
                 vidname=handle_file('videoname','open')
                 video = get_video_name(vidname)
@@ -2971,19 +2973,20 @@ def getMeta(scrape, mode):
     
         #initialise meta class before loop
         metaget=metahandlers.MetaData(preparezip=prepare_zip)
+        meta_installed = metaget.check_meta_installed(addon_id)
 
         #determine whether to show number of eps
         if scrape[3] and show_num_of_eps == 'true' and mode == 12:
             for imdb_id,url,name,num_of_eps in scrape:
                 num_of_eps=re.sub('<','',num_of_eps)
                 num_of_eps=re.sub('isode','',num_of_eps)#turn Episode{s} into Ep(s)
-                ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps, totalitems=len(scrape))
+                ADD_ITEM(metaget,meta_installed,imdb_id,url,name,mode,num_of_eps, totalitems=len(scrape))
         elif mode == 12: # fix for tvshows with num of episodes disabled
             for imdb_id,url,name, blank in scrape:
-                ADD_ITEM(metaget,imdb_id,url,name,mode, totalitems=len(scrape))
+                ADD_ITEM(metaget,meta_installed,imdb_id,url,name,mode, totalitems=len(scrape))
         else:
             for imdb_id,url,name in scrape:
-                ADD_ITEM(metaget,imdb_id,url,name,mode, totalitems=len(scrape))
+                ADD_ITEM(metaget,meta_installed,imdb_id,url,name,mode, totalitems=len(scrape))
                 
     #add without metadata -- imdb is still passed for use with Add to Favourites
     else:
@@ -2992,13 +2995,11 @@ def getMeta(scrape, mode):
             addDir(name,iceurl+url,mode,'',imdb='tt'+str(imdb_id), totalItems=len(scrape))
             
 
-def ADD_ITEM(metaget,imdb_id,url,name,mode,num_of_eps=False, totalitems=0):
+def ADD_ITEM(metaget, meta_installed, imdb_id,url,name,mode,num_of_eps=False, totalitems=0):
             #clean name of unwanted stuff
             name=CLEANUP(name)
             if url.startswith('http://www.icefilms.info') == False:
                 url=iceurl+url
-            
-            meta_installed = metaget.check_meta_installed(addon_id)
 
             #append number of episodes to the display name, AFTER THE NAME HAS BEEN USED FOR META LOOKUP
             if num_of_eps is not False:
@@ -3054,14 +3055,12 @@ def REFRESH(videoType, url,imdb_id,name,dirmode):
                 xbmc.executebuiltin("XBMC.Container.Refresh")           
 
                 
-def get_episode(season, episode, imdb_id, url, metaget, tmp_season_num=-1, tmp_episode_num=-1, totalitems=0):
+def get_episode(season, episode, imdb_id, url, metaget, meta_installed, tmp_season_num=-1, tmp_episode_num=-1, totalitems=0):
         # displays all episodes in the source it is passed.
         imdb_id = imdb_id.replace('t','')
    
         #add with metadata
         if metaget:
-            
-            meta_installed = metaget.check_meta_installed(addon_id)
             
             #clean name of unwanted stuff
             episode=CLEANUP(episode)
