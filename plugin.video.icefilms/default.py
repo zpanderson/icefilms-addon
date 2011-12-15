@@ -1211,7 +1211,8 @@ def TVSEASONS(url, imdb_id):
             if meta_setting=='true':
                 metaget=metahandlers.MetaData(preparezip=prepare_zip)
                 meta_installed = metaget.check_meta_installed(addon_id)
-                season_meta = metaget.get_seasons(showname, imdb_id, season_nums)
+                if meta_installed:
+                    season_meta = metaget.get_seasons(showname, imdb_id, season_nums)
             else:
                 meta_installed = False
         num = 0
@@ -3080,6 +3081,8 @@ def get_episode(season, episode, imdb_id, url, metaget, tmp_season_num=-1, tmp_e
             if se:
                 tmp_season_num = int(se.group(1))
 
+            meta = {}
+            
             if meta_installed and tmp_episode_num >= 0:
                 showname = CLEANUP_FOR_META(showname)
                 meta=metaget.get_episode_meta(showname, imdb_id, tmp_season_num, tmp_episode_num)
