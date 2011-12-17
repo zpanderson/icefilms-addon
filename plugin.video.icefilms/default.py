@@ -1532,15 +1532,13 @@ def Add_Multi_Parts(name,url,icon,sourcenumber):
          urls = [''] * 30
          while i < len(sourceList) - 1:
              tmp = string.split(sourceList[i], ';')
-             print 'This is the name: ' + tmp[0] + ' and this is the url: ' + tmp[1]
              videoname[i] = tmp[0]
              urls[i] = tmp[1]
-             print 'This is the name: ' + videoname[i] + ' and this is the url: ' + urls[i]
+             #print 'This is the name: ' + videoname[i] + ' and this is the url: ' + urls[i]
              i += 1
 
          #save list of urls to later be stacked when user selects part
          is_part_one = videoname[i-1].rfind('Part 1')
-         print 'TEST**** %i'  % is_part_one
          if is_part_one != -1:
              name = videoname[i-1].replace('Part 1', 'Multiple Parts')
              addExecute(name,url,199,icon)
@@ -1636,7 +1634,9 @@ def GetSource(id, args, cookie):
 
 
 def SOURCE(page, sources):
-          # check for sources containing multiple parts or just one part
+          # open the sourcelist txt file and remove previous sources
+          sourceListFile=handle_file('sourceList','')
+          save(sourceListFile, '')
           # get settings
           hide2shared = selfAddon.getSetting('hide-2shared')
           megapic=handle_file('megapic','')
@@ -2112,7 +2112,7 @@ def Stream_Source_with_parts(name,url):
     #Find the index of part 1
     name = name.replace('Multiple Parts', 'Part 1')
     name = name.strip()
-    print name
+    #print name
     i = 0
     index = -1
     partlist = []
@@ -2125,7 +2125,6 @@ def Stream_Source_with_parts(name,url):
             source_num = source_num_tmp.group(1)
             part_num_tmp = re.search('Part (.+?)',sourceList[index])
             part_num = part_num_tmp.group(1)
-            print 'Playing the following source and part: ' + str(source_num) + ' : ' + str(part_num)
             #check for additional parts
         elif index != -1:
             part = sourceList[i]
@@ -2135,7 +2134,6 @@ def Stream_Source_with_parts(name,url):
             part_num2 = part_num_tmp.group(1)
             if source_num2 == source_num:
                 #part is from the same source so add it to the partlist to be played.
-                print 'This part is from the same source! ' + part
                 partlist.append(part)
         i += 1
     ###
@@ -2149,14 +2147,6 @@ def Stream_Source_with_parts(name,url):
 
 
     # first part is playing... now wait to start 2nd part
-    try:
-        totalTime = mplayer.getTotalTime()
-    except Exception:
-        xbmc.sleep(20000) #wait 20 seconds until the video is playing before getting totalTime
-        try:
-            totalTime = mplayer.getTotalTime()
-        except Exception:
-            return
     while(1):
         #Set the currentTime and totalTime to arbitrary numbers. This keeps it from pre-maturely starting the 3rd part immediately after the 2nd part starts
         # using currentTime and totalTime from the first part.
@@ -2236,7 +2226,7 @@ class MyPlayer (xbmc.Player):
         if finalPart == 1:
             percentWatched = currentTime / totalTime
             print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
-            if percentWatched <= watched_percent and totalTime > 1:
+            if percentWatched >= watched_percent and totalTime > 1:
                 #set watched
                 vidname=handle_file('videoname','open')
                 video = get_video_name(vidname)
