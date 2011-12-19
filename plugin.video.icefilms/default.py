@@ -1753,26 +1753,11 @@ class TwoSharedDownloader:
           htmlSource = response.read()
      
           # Search the source for link to the video and store it for later use
-          match = self.re2sUrl.search(htmlSource)
-          fileUrl = match.group(0)
-          
-          # Extract the cookies set by visiting the 2Shared page
-          cookies = cookielib.CookieJar()
-          cookies.extract_cookies(response, request)
-          
-          # Format the cookies so they can be used in XBMC
-          for item in cookies._cookies['.2shared.com']['/']:
-               self.cookieString += str(item) + "=" + str(cookies._cookies['.2shared.com']['/'][item].value) + "; "
-               self.cookieString += "WWW_JSESSIONID=" + str(cookies._cookies['www.2shared.com']['/']['JSESSIONID'].value)
-
-          # Arrange the spoofed header string in a format XBMC can read
-          headers = urllib.quote("User-Agent=Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)|Accept=text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8|Accept-Language=en-us,en;q=0.5|Accept-Encoding=gzip,deflate|Accept-Charset=ISO-8859-1,utf-8;q=0.7,*;q=0.7|Keep-Alive=115|Referer=" + pageUrl + "|Cookie=" + self.cookieString)
-          
-          # Append the header string to the file URL
-          pathToPlay = fileUrl + "?" + headers
+          match = re.compile('">(.+?)</div>').findall(htmlSource)
+          fileUrl = match[0]
           
           # Return the valid link
-          return pathToPlay 
+          return fileUrl 
      
 
      
@@ -1780,25 +1765,11 @@ class TwoSharedDownloader:
 def SHARED2_HANDLER(url):
           downloader2Shared = TwoSharedDownloader()
           vidFile = downloader2Shared.returnLink(url)
-          #vidFile = TwoSharedDownloader.returnLink(url)
-          
-          print str(vodFile)
-          match=re.compile('http\:\/\/(.+?)\.dc1').findall(vidFile)
-          for urlbulk in match:
-               finalurl='http://'+urlbulk+'.avi'
-               print '2Shared Direct Link: '+finalurl
-               return finalurl
-          #req = urllib2.Request(url)
-          #req.add_header('User-Agent', USER_AGENT)
-          #req.add_header('Referer', url)
-          #jar = cookielib.FileCookieJar("cookies")
-          #opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
-          #response = opener.open(req)
-          #link=response.read()
-          #response.close()
-          #dirlink=re.compile("window.location ='(.+?)';").findall(link)
-          #for surl in dirlink:
-          #    return surl
+
+          print '2Shared Direct Link: '+vidFile
+          finalUrl = [1]
+          finalUrl[0] = vidFile
+          return finalUrl
 
 
 def GetURL(url, params = None, referrer = ICEFILMS_REFERRER, cookie = None, save_cookie = False):
@@ -2019,10 +1990,10 @@ def Handle_Vidlink(url):
                return None
 
      elif is2shared is not None:
-          Notify('big','2Shared','2Shared is not supported by this addon. (Yet)','')
-          return False
-          #shared2url=SHARED2_HANDLER(url)
-          #return shared2url
+          #Notify('big','2Shared','2Shared is not supported by this addon. (Yet)','')
+          #return False
+          shared2url=SHARED2_HANDLER(url)
+          return shared2url
 
 
 def PlayFile(name,url):
