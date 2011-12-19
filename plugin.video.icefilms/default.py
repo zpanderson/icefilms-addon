@@ -570,75 +570,6 @@ def FAVOURITES(url):
     addDir('TV Shows',iceurl,570,tvshows)
     addDir('Movies',iceurl,571,movies)
 
-#Movie Favourites folder.
-def MOVIE_FAVOURITES(url):
-    #get settings
-    favpath=os.path.join(translatedicedatapath,'Favourites')
-    moviefav=os.path.join(favpath,'Movies')
-    try:
-        moviedircontents=os.listdir(moviefav)
-    except:
-        moviedircontents=None
-
-    if moviedircontents == None:
-        Notify('big','No Movie Favourites Saved','To save a favourite press the C key on a movie or\n TV Show and select Add To Icefilms Favourites','')
-
-    else:
-        #add clear favourites entry - Not sure if we must put it here, cause it will mess up the sorting
-        #addExecute('* Clear Favourites Folder *',url,58,os.path.join(art,'deletefavs.png'))
-
-        #handler for all movie favourites
-        if moviedircontents is not None:
-
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            if meta_setting=='true':
-                addFavourites(True,moviefav,moviedircontents)
-            #add without metadata -- imdb is still passed for use with Add to Favourites
-            else:
-                addFavourites(False,moviefav,moviedircontents)
-
-
-        else:
-            print 'moviedircontents is none!'
-
-    # Enable library mode & set the right view for the content
-    setView('movies', 'movies-view')
-
-
-#TV Shows Favourites folder
-def TV_FAVOURITES(url):
-    #get settings
-    favpath=os.path.join(translatedicedatapath,'Favourites')
-    tvfav=os.path.join(favpath,'TV')
-    try:
-        tvdircontents=os.listdir(tvfav)
-    except:
-        tvdircontents=None
-
-    if tvdircontents == None:
-        Notify('big','No TV Favourites Saved','To save a favourite press the C key on a movie or\n TV Show and select Add To Icefilms Favourites','')
-
-    else:
-        #add clear favourites entry - Not sure if we must put it here, cause it will mess up the sorting
-        #addExecute('* Clear Favourites Folder *',url,58,os.path.join(art,'deletefavs.png'))
-
-        #handler for all tv favourites
-        if tvdircontents is not None:
-
-            #add with metadata -- imdb is still passed for use with Add to Favourites
-            if meta_setting=='true':
-                addFavourites(True,tvfav,tvdircontents)    
-            #add without metadata -- imdb is still passed for use with Add to Favourites
-            else:
-                addFavourites(False,tvfav,tvdircontents)
-
-         
-        else:
-            print 'tvshows dircontents is none!'
-
-    # Enable library mode & set the right view for the content
-    setView('tvshows', 'tvshows-view')
-
 
 def URL_TYPE(url):
      #Check whether url is a tv episode list or movie/mirrorpage
@@ -2938,7 +2869,7 @@ def TV_FAVOURITES(url):
             print 'tvshows dircontents is none!'
     
     # Enable library mode & set the right view for the content
-    setView('movies', 'tvshows-view')
+    setView('tvshows', 'tvshows-view')
 
 
 def cleanUnicode(string):
