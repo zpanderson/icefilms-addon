@@ -953,9 +953,7 @@ def SEARCH(url):
             tvshowname=handle_file('mediatvshowname','')
             seasonname=handle_file('mediatvseasonname','')
             DoEpListSearch(search)
-            DoSearch(search,0)
-            DoSearch(search,1)
-            DoSearch(search,2)
+            DoSearch(search)
                        
             #delete tv show name file, do the same for season name file
             try:
@@ -968,14 +966,42 @@ def SEARCH(url):
                 pass
     setView('movies', 'movies-view')
     xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_LABEL )    
-                    
+    
                                
-def DoSearch(search,page):        
+def DoSearch(search):        
+        finished = False
+        nextPage = 0
+        results = None
         gs = GoogleSearch('site:http://www.icefilms.info/ip '+search+'')
-        gs.results_per_page = 25
-        gs.page = page
-        results = gs.get_results()
+        gs.results_per_page = 10
+
+        while not finished:
+            gs.page = nextPage             
+            if (results == None):
+                results = gs.get_results()
+            else:
+                finished = True
+                local = gs.get_results()                
+                for res in local:
+                   if not FindSearchResult(res.title, results):
+                       finished = False
+                       results.append(res)   
+                 
+            nextPage = nextPage + 1
+
+            #if len(results) > 100:
+            #    finished = True
+
+        results = sorted(results, key=lambda result: result.title)
         find_meta_for_search_results(results, 100)
+   
+
+def FindSearchResult(name, results):
+        for res in results:
+            if res.title == name:
+                  return True            
+        return False
+
 
 def DoEpListSearch(search):
         tvurl='http://www.icefilms.info/tv/series'              
@@ -987,6 +1013,7 @@ def DoEpListSearch(search):
         link=GetURL(url)
         
         match=re.compile('<h3 class="r"><a href="'+tvurl+'(.+?)"(.+?)">(.+?)</h3>').findall(link)
+        match = sorted(match, key=lambda result: result[2])
         find_meta_for_search_results(match, 12, search)
 
 
