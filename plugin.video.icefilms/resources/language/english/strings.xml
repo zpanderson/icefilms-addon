@@ -3,7 +3,6 @@
     <string id="30101">Hide homepage</string>
     <string id="30103">Flatten TV Shows with single seasons</string>
     <string id="30104">Flatten source type for single type videos</string>
-    <string id="30105">Hide 2Shared sources</string>
     <string id="30106">Stack Multi-Part Sources</string>
     <string id="30107">In TV A-Z display number of episodes per show</string>
 
@@ -31,8 +30,11 @@
     
     <!-- Meta Data -->
     <string id="30600">Enable MetaData</string>
-    <string id="30601">    Movie Fanart</string>
-    <string id="30602">    TV Fanart</string>    
+    <string id="30601">    Movie Covers</string>
+    <string id="30602">    TV Covers</string>   
+    <string id="30603">        Use Posters instead of Banners for TV Shows</string>
+    <string id="30604">    Movie Fanart</string>
+    <string id="30605">    TV Fanart</string>
 
     <!-- Miscellaneous -->
     <string id="30500">Icefilms Site URL</string>
