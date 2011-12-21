@@ -309,6 +309,9 @@ def ContainerStartup():
      meta_installed = mh.check_meta_installed(addon_id)
      
      movie_fanart = selfAddon.getSetting('movie-fanart')
+     movie_covers = selfAddon.getSetting('movie-covers')
+     tv_covers = selfAddon.getSetting('tv-covers')
+     tv_posters = selfAddon.getSetting('tv-posters')
      tv_fanart = selfAddon.getSetting('tv-fanart')
 
      #get containers dict from container_urls.py
@@ -318,64 +321,117 @@ def ContainerStartup():
                             
      if not meta_installed:
 
-         #Offer to download the metadata
+         #Offer to download the metadata DB
          dialog = xbmcgui.Dialog()
-         ret = dialog.yesno('Download Meta Containers '+str(containers['date'])+' ?', 'There is a metadata container avaliable.','Install it to get images and info for videos.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+         ret = dialog.yesno('Download Meta Containers '+str(containers['date'])+' ?', 'There is a metadata container avaliable.','Install it to get meta information for videos.', 'Would you like to get it? Its a small '+str(containers['db_size'])+'MB download.','Remind me later', 'Install')
          
          if ret==True:
                  
               #download dem files
               get_db_zip=Zip_DL_and_Install(containers['db_url'],'database', work_path, mc)
-              get_movie_cover_zip=Zip_DL_and_Install(containers['mv_covers_url'],'movie_images', work_path, mc)
-              get_tv_cover_zip=Zip_DL_and_Install(containers['tv_covers_url'],'tv_images', work_path, mc)
 
               #do nice notification
-              if get_db_zip==True and get_movie_cover_zip==True and get_tv_cover_zip==True:
-                   Notify('small','Metacontainer Installation Success','','')
+              if get_db_zip==True:
+                   Notify('small','Metacontainer DB Installation Success','','')
                    
                    #Update meta addons table to indicate meta pack was installed with covers
-                   mh.insert_meta_installed(addon_id, last_update=containers['date'], movie_covers='true', tv_covers='true')
+                   mh.insert_meta_installed(addon_id, last_update=containers['date'])
                    
                    #Re-check meta_installed
                    meta_installed = mh.check_meta_installed(addon_id)
               
-              elif get_db_zip==False or get_movie_cover_zip==False or get_tv_cover_zip==False:
-                   Notify('small','Metacontainer Installation Failure','','')
+              elif get_db_zip==False:
+                   Notify('small','Metacontainer DB Installation Failure','','')
 
-     if movie_fanart =='true' and meta_installed:
-         if meta_installed['movie_backdrops'] == 'false':
-             dialog = xbmcgui.Dialog()
-             ret = dialog.yesno('Download Movie Fanart?', 'There is a metadata container avaliable.','Install it to get background images for Movies.', 'Would you like to get it? Its a large '+str(containers['mv_backdrop_size'])+'MB download.','Remind me later', 'Install')
-             if ret==True:
-                 #download dem files
-                 get_backdrop1_zip=Zip_DL_and_Install(containers['mv_backdrop_1_url'],'movie_images', work_path, mc)
-                 get_backdrop2_zip=Zip_DL_and_Install(containers['mv_backdrop_2_url'],'movie_images', work_path, mc)
-                 get_backdrop3_zip=Zip_DL_and_Install(containers['mv_backdrop_3_url'],'movie_images', work_path, mc)
-                 
-                 if get_backdrop1_zip and get_backdrop2_zip and get_backdrop3_zip:
-                     mh.update_meta_installed(addon_id, movie_backdrops='true')
-                 else:
-                     print '******* ERROR - Movie backrop install failed'
-                     Notify('small','Movie Backdrop Installation Failure','','')
-         else:
-             print 'Movie backdrops already installed'
+     #Only check/prompt for image pack downloads if the DB has been downloaded/installed
+     if meta_installed:
 
-     if tv_fanart =='true' and meta_installed:
-         if meta_installed['tv_backdrops'] == 'false':
-             dialog = xbmcgui.Dialog()
-             ret = dialog.yesno('Download TV Show Fanart?', 'There is a metadata container avaliable.','Install it to get background images for TV Shows.', 'Would you like to get it? Its a large '+str(containers['tv_backdrop_size'])+'MB download.','Remind me later', 'Install')
-             if ret==True:
-                 #download dem files
-                 get_backdrop_zip=Zip_DL_and_Install(containers['tv_backdrop_url'],'tv_images', work_path, mc)
-                 
-                 if get_backdrop_zip:
-                     mh.update_meta_installed(addon_id, tv_backdrops='true')
-                 else:
-                     print '******* ERROR - TV backrop install failed'
-                     Notify('small','TV Backdrop Installation Failure','','')                     
+         #TV Covers/Banners
+         if tv_covers =='true':
+             if tv_posters == 'true':
+                 tv_installed = meta_installed['tv_covers']
+                 tv_zip = containers['tv_covers_url']
+                 tv_size = containers['tv_cover_size']
+             else:
+                 tv_installed = meta_installed['tv_banners']
+                 tv_zip = containers['tv_banners_url']
+                 tv_size = containers['tv_banners_size']
 
-         else:
-             print 'TV backdrops already installed'
+             if tv_installed == 'false':
+                 dialog = xbmcgui.Dialog()
+                 ret = dialog.yesno('Download TV Covers?', 'There is a metadata container avaliable.','Install it to get cover images for TV Shows.', 'Would you like to get it? Its a large ' + str(tv_size) + 'MB download.','Remind me later', 'Install')
+                 if ret==True:
+                     #download dem files
+                     get_cover_zip=Zip_DL_and_Install(tv_zip,'tv_images', work_path, mc)
+                     
+                     if get_cover_zip:
+                         if tv_posters =='true':
+                             mh.update_meta_installed(addon_id, tv_covers='true')
+                         else:
+                             mh.update_meta_installed(addon_id, tv_banners='true')
+                         Notify('small','TV Cover Installation Success','','')
+                     else:
+                         print '******* ERROR - TV cover install failed'
+                         Notify('small','TV Cover Installation Failure','','')                     
+             else:
+                 print 'TV Covers already installed'
+
+         #Movie Covers
+         if movie_covers =='true':
+             if meta_installed['movie_covers'] == 'false':
+                 dialog = xbmcgui.Dialog()
+                 ret = dialog.yesno('Download Movie Covers?', 'There is a metadata container avaliable.','Install it to get cover images for Movies.', 'Would you like to get it? Its a large '+str(containers['mv_cover_size'])+'MB download.','Remind me later', 'Install')
+                 if ret==True:
+                     #download dem files
+                     get_cover_zip=Zip_DL_and_Install(containers['mv_covers_url'],'movie_images', work_path, mc)
+                     
+                     if get_cover_zip:
+                         mh.update_meta_installed(addon_id, movie_covers='true')
+                         Notify('small','Movie Cover Installation Success','','')
+                     else:
+                         print '******* ERROR - Movie cover install failed'
+                         Notify('small','Movie Cover Installation Failure','','')                     
+             else:
+                 print 'Movie Covers already installed'
+
+         #Movie Fanart
+         if movie_fanart =='true':
+             if meta_installed['movie_backdrops'] == 'false':
+                 dialog = xbmcgui.Dialog()
+                 ret = dialog.yesno('Download Movie Fanart?', 'There is a metadata container avaliable.','Install it to get background images for Movies.', 'Would you like to get it? Its a large '+str(containers['mv_backdrop_size'])+'MB download.','Remind me later', 'Install')
+                 if ret==True:
+                     #download dem files
+                     get_backdrop1_zip=Zip_DL_and_Install(containers['mv_backdrop_1_url'],'movie_images', work_path, mc)
+                     get_backdrop2_zip=Zip_DL_and_Install(containers['mv_backdrop_2_url'],'movie_images', work_path, mc)
+                     get_backdrop3_zip=Zip_DL_and_Install(containers['mv_backdrop_3_url'],'movie_images', work_path, mc)
+                     
+                     if get_backdrop1_zip and get_backdrop2_zip and get_backdrop3_zip:
+                         mh.update_meta_installed(addon_id, movie_backdrops='true')
+                         Notify('small','Movie Fanart Installation Success','','')
+                     else:
+                         print '******* ERROR - Movie backrop install failed'
+                         Notify('small','Movie Fanart Installation Failure','','')
+             else:
+                 print 'Movie fanart already installed'
+
+         #TV Fanart
+         if tv_fanart =='true':
+             if meta_installed['tv_backdrops'] == 'false':
+                 dialog = xbmcgui.Dialog()
+                 ret = dialog.yesno('Download TV Show Fanart?', 'There is a metadata container avaliable.','Install it to get background images for TV Shows.', 'Would you like to get it? Its a large '+str(containers['tv_backdrop_size'])+'MB download.','Remind me later', 'Install')
+                 if ret==True:
+                     #download dem files
+                     get_backdrop_zip=Zip_DL_and_Install(containers['tv_backdrop_url'],'tv_images', work_path, mc)
+                     
+                     if get_backdrop_zip:
+                         mh.update_meta_installed(addon_id, tv_backdrops='true')
+                         Notify('small','TV Fanart Installation Success','','')
+                     else:
+                         print '******* ERROR - TV backrop install failed'
+                         Notify('small','TV Fanart Installation Failure','','')                     
+    
+             else:
+                 print 'TV fanart already installed'
 
 
 def Zip_DL_and_Install(url,installtype,work_folder,mc):
@@ -396,7 +452,7 @@ def Zip_DL_and_Install(url,installtype,work_folder,mc):
      if filepath_exists==False:
                     
          print 'Downloading zip: %s' % thefile[0]
-         do_wait(thefile[3])
+         do_wait(thefile[3], thefile[4])
          Download(thefile[0], filepath, installtype)
        
      elif filepath_exists==True:
@@ -553,7 +609,7 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                         addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
                     else:
                         #add directories with meta
-                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), backdrops=meta_installed)
+                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), meta_install=meta_installed)
                 else:
                     #add all the items without meta
                     addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
@@ -805,7 +861,7 @@ def RECENT(url):
 
                                 if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, meta_install=meta_installed)
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True)
         setView(None, 'default-view')                                    
@@ -837,7 +893,7 @@ def LATEST(url):
                                                                     
                                 if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, meta_install=meta_installed)
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True)
         setView(None, 'default-view')
@@ -870,7 +926,7 @@ def WATCHINGNOW(url):
                                                                     
                                 if meta_installed and meta_setting=='true':
                                     meta = check_video_meta(name, metaget)
-                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, backdrops=meta_installed)
+                                    addDir(name,url,mode,'',meta=meta,disablefav=True, disablewatch=True, meta_install=meta_installed)
                                 else:
                                     addDir(name,url,mode,'',disablefav=True, disablewatch=True) 
         setView(None, 'default-view')
@@ -1185,7 +1241,7 @@ def TVSEASONS(url, imdb_id):
                 #add season directories
                 if meta_installed and meta_setting=='true' and season_meta:
                     temp = season_meta[num]
-                    addDir(seasons.strip(),'',13,temp['cover_url'],imdb=''+str(imdb_id), meta=season_meta[num], totalItems=len(season_list), backdrops=meta_installed) 
+                    addDir(seasons.strip(),'',13,temp['cover_url'],imdb=''+str(imdb_id), meta=season_meta[num], totalItems=len(season_list), meta_install=meta_installed) 
                     num = num + 1                     
                 else:
                     addDir(seasons.strip(),'',13,'', imdb=''+str(imdb_id), totalItems=len(season_list))
@@ -1505,7 +1561,7 @@ def Add_Multi_Parts(name,url,icon,sourcenumber):
          addExecute(name,url,get_default_action(),icon)
 
 
-def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
+def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
      #check if source exists
      sourcestring='Source #'+sourcenumber
      checkforsource = re.search(sourcestring, scrap)
@@ -1540,7 +1596,7 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
                               appendfile(sourceListFile, fullname + '; ' + url + ',\n')
                               Add_Multi_Parts(fullname,url,megapic,sourcenumber)
                               #Add_Multi_Parts(fullname,url,megapic)
-                        elif is2shared is not None and hide2shared == 'false':
+                        elif is2shared is not None:
                              #print sourcestring+' is hosted by 2shared' 
                              part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
                              for url,name in part:
@@ -1565,7 +1621,7 @@ def PART(scrap,sourcenumber,args,cookie,hide2shared,megapic,shared2pic):
                          # print 'Source #'+sourcenumber+' is hosted by megaupload'
                          fullname=sourcestring+' | MU | Full'
                          addExecute(fullname,url,get_default_action(),megapic)
-                    elif is2shared is not None and hide2shared == 'false':
+                    elif is2shared is not None:
                          #print 'Source #'+sourcenumber+' is hosted by 2shared' 
                          fullname=sourcestring+' | 2S  | Full'
                          addExecute(fullname,url,200,shared2pic)
@@ -1596,7 +1652,6 @@ def SOURCE(page, sources):
           sourceListFile=handle_file('sourceList','')
           save(sourceListFile, '')
           # get settings
-          hide2shared = selfAddon.getSetting('hide-2shared')
           megapic=handle_file('megapic','')
           shared2pic=handle_file('shared2pic','')
 
@@ -1662,7 +1717,7 @@ def SOURCE(page, sources):
           #...so it's not as CPU intensive as you might think.
 
           for thenumber in numlist:
-               PART(sources,thenumber,args,cookie,hide2shared,megapic,shared2pic)
+               PART(sources,thenumber,args,cookie,megapic,shared2pic)
           setView(None, 'default-view')
 
 def DVDRip(url):
@@ -1883,20 +1938,20 @@ def Item_Meta(name):
           return listitem
 
 
-def do_wait(account):
+def do_wait(account, wait_time):
      # do the necessary wait, with  a nice notice and pre-set waiting time. I have found the below waiting times to never fail.
 
      if account == 'platinum':    
-          return handle_wait(1,'Megaupload','Loading video with your *Platinum* account.')
+          return handle_wait(int(wait_time),'Megaupload','Loading video with your *Platinum* account.')
                
      elif account == 'premium':    
-          return handle_wait(1,'Megaupload','Loading video with your *Premium* account.')
+          return handle_wait(int(wait_time),'Megaupload','Loading video with your *Premium* account.')
              
      elif account == 'free':
-          return handle_wait(61,'Megaupload Free User','Loading video with your free account.')
+          return handle_wait(int(wait_time),'Megaupload Free User','Loading video with your free account.')
 
      else:
-          return handle_wait(61,'Megaupload','Loading video.')
+          return handle_wait(int(wait_time),'Megaupload','Loading video.')
 
 
 def handle_wait(time_to_wait,title,text):
@@ -1940,7 +1995,7 @@ def Handle_Vidlink(url):
           mu = megaroutines.megaupload(translatedicedatapath)
           link = mu.resolve_megaup(url)
 
-          finished = do_wait(link[3])
+          finished = do_wait(link[3], link[4])
 
           if finished == True:
                return link
@@ -1991,8 +2046,8 @@ def Stream_Source(name,url):
     
     #Download file in a separate thread then play - delete file when done
     else:
-        Download_And_Play(name,url)
-        CancelDownload(name)
+        Download_And_Play(name,url, video_seek=True)
+        CancelDownload(name, video_seek=True)
 
 
 def play_with_watched(url, listitem, mypath):
@@ -2255,7 +2310,7 @@ class SmallFile(Exception):
         def __str__(self): 
             return repr(self.value)
 
-def Download_And_Play(name,url):
+def Download_And_Play(name,url, video_seek=False):
 
     #get proper name of vid                                                                                                           
     vidname=handle_file('videoname','open')
@@ -2350,8 +2405,14 @@ def Download_And_Play(name,url):
                               
                 play_with_watched(mypath, listitem, '')
                 
-                #xbmc.Player().play(mypath, listitem)
-                addDownloadControls(name,mypath, listitem)
+                if video_seek:
+                    if os.path.exists(mypath):
+                        try:
+                            os.remove(mypath)
+                        except:
+                            print 'Failed to delete file after video seeking'
+                else:
+                    addDownloadControls(name,mypath, listitem)
             else:
                 raise
         else:
@@ -2612,7 +2673,7 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
-def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, backdrops=False):
+def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, meta_install=False):
      ###  addDir with context menus and meta support  ###
 
      #encode url and name, so they can pass through the sys.argv[0] related strings
@@ -2654,15 +2715,32 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
 
      else:
                  
-         liz = xbmcgui.ListItem(name, iconImage=meta['cover_url'], thumbnailImage=meta['cover_url'])                                                    
+         #check covers installed
+         covers_url = ''
+         if mode == 12:
+
+             #check tv posters vs banners setting 
+             tv_posters = selfAddon.getSetting('tv-posters')
+             if tv_posters == 'true':
+                 if meta_install['tv_covers'] == 'true':
+                     covers_url = meta['cover_url']
+             else:
+                 if meta_install['tv_banners'] == 'true':
+                     covers_url = meta['banner_url']
+         else:
+             if meta_install['movie_covers'] == 'true':
+                 covers_url = meta['cover_url']
+
+         #Set XBMC list item
+         liz = xbmcgui.ListItem(name, iconImage=covers_url, thumbnailImage=covers_url)
          liz.setInfo(type="Video", infoLabels=meta)
 
          #Set fanart/backdrop setting variables
          movie_fanart = selfAddon.getSetting('movie-fanart')
          tv_fanart = selfAddon.getSetting('tv-fanart')
-         if backdrops:
-             movie_fanart_installed = backdrops['movie_backdrops']
-             tv_fanart_installed = backdrops['tv_backdrops']
+         if meta_install:
+             movie_fanart_installed = meta_install['movie_backdrops']
+             tv_fanart_installed = meta_install['tv_backdrops']
 
          # mark as watched or unwatched 
          addWatched = False
@@ -2732,10 +2810,6 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
                      
      if contextMenuItems:
          liz.addContextMenuItems(contextMenuItems, replaceItems=True)
-         #liz.addContextMenuItems(contextMenuItems)
-     #########
-
-     #print '          Mode=' + str(mode) + ' URL=' + str(url)
 
      if mode == 14:
          if check_episode(name):
@@ -2779,12 +2853,6 @@ def inLibraryMode():
     return xbmc.getCondVisibility("[Window.IsActive(videolibrary)]")
 
 def setView(content, viewType):
-    
-    # kept for reference only
-    #movies_view = selfAddon.getSetting('movies-view')
-    #tvshows_view = selfAddon.getSetting('tvshows-view')
-    #episodes_view = selfAddon.getSetting('episodes-view')
-    #
     
     # set content type so library shows more views and info
     if content:
@@ -2941,7 +3009,7 @@ def ADD_ITEM(metaget, meta_installed, imdb_id,url,name,mode,num_of_eps=False, to
                     #return the metadata dictionary
                     meta=metaget.get_meta('tvshow', meta_name, imdb_id=imdb_id)
                 
-                addDir(name,url,mode,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, backdrops=meta_installed)  
+                addDir(name,url,mode,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, meta_install=meta_installed)  
            
             else:
                 #add directories without meta
@@ -3007,7 +3075,7 @@ def get_episode(season, episode, imdb_id, url, metaget, meta_installed, tmp_seas
                       
             if meta and meta_installed:
                 #add directories with meta
-                addDir(episode,iceurl+url,14,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, backdrops=meta_installed)
+                addDir(episode,iceurl+url,14,'',meta=meta,imdb='tt'+str(imdb_id),totalItems=totalitems, meta_install=meta_installed)
             else:
                 #add directories without meta
                 addDir(episode,iceurl+url,14,'',imdb='tt'+str(imdb_id),totalItems=totalitems)
@@ -3040,7 +3108,7 @@ def find_meta_for_search_results(results, mode, search=''):
                                                                        
             if meta_installed and meta_setting=='true':
                 meta = check_video_meta(name, metaget)
-                addDir(name,url,mode,'',meta=meta,imdb=meta['imdb_id'],searchMode=True, backdrops=meta_installed)
+                addDir(name,url,mode,'',meta=meta,imdb=meta['imdb_id'],searchMode=True, meta_install=meta_installed)
             else:
                 addDir(name,url,mode,'',searchMode=True)
 
@@ -3193,13 +3261,14 @@ def ShowDownloadInfo(name):
     return True
  
 
-def CancelDownload(name):
+def CancelDownload(name, video_seek=False):
     if not os.path.exists(os.path.join(downloadPath, 'Downloading')):
-        Notify('big','Download Inactive!','Download is not active','')
+        if not video_seek:
+            Notify('big','Download Inactive!','Download is not active','')
     else:
         save(os.path.join(downloadPath, 'Cancel'),'Cancel')    
     return True
-   
+
 
 def get_default_action():
    action_setting = selfAddon.getSetting('play-action')
