@@ -14,6 +14,7 @@ def get():
           
           #--- Database Meta Container ---# 
           containers['db_url'] = 'http://www.megaupload.com/?d=2NCVGTFF'
+          containers['db_size'] = 7
                     
           #--- Movie Meta Container ---# 
 
@@ -31,6 +32,10 @@ def get():
           #basic container       
           containers['tv_covers_url'] = 'http://www.megaupload.com/?d=QJMWHCQW'
           containers['tv_cover_size'] = 530
+
+          containers['tv_banners_url'] = 'http://www.megaupload.com/?d=6OIPR6UA'
+          containers['tv_banners_size'] = 175
+
 
           containers['tv_backdrop_url'] = 'http://www.megaupload.com/?d=5S18YI9Q'
           containers['tv_backdrop_size'] = 832
