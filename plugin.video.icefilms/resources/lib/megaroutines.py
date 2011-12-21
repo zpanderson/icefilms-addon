@@ -96,10 +96,16 @@ class megaupload:
              megavidlink=self.get_megavid(source)
 
              logincheck=self.check_login(source)
+             
+             #if free user, get the wait time
+             if logincheck in ('free', 'none'):
+                 wait_time = self.get_wait_time(source)
+             else:
+                 wait_time = 1
 
         filename=self._get_filename(filelink)
         
-        return filelink,filename,megavidlink,logincheck
+        return filelink,filename,megavidlink,logincheck, wait_time
 
 
    def load_pagesrc(self,url,disable_cookies=False):
@@ -216,6 +222,11 @@ class megaupload:
                     return url[:-4]+'avi'
           else:          
                     return url
+
+
+   def get_wait_time(self, source):
+       wait_time = re.compile('count=([0-9]+);').findall(source)
+       return wait_time[0]
 
 
    def _get_filename(self,url=False,source=False):
