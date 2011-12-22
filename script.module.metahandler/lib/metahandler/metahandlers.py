@@ -30,11 +30,7 @@ from TMDB import TMDB
 from thetvdbapi import TheTVDB
 
 #necessary so that the metacontainers.py can use the scrapers
-try: import xbmc,xbmcaddon
-except:
-     xbmc_imported = False
-else:
-     xbmc_imported = True
+import xbmc,xbmcaddon
 
 
 ''' Use t0mm0's common library for http calls, corrects unicode problems '''
@@ -108,7 +104,8 @@ class MetaData:
 
         self.tvpath = make_dir(self.cache_path, self.type_tvshow)
         self.tvcovers = make_dir(self.tvpath, 'covers')
-        self.tvbackdrops = make_dir(self.tvpath, 'backdrops')        
+        self.tvbackdrops = make_dir(self.tvpath, 'backdrops')
+        self.tvbanners = make_dir(self.tvpath, 'banners')
 
         self.mvpath = make_dir(self.cache_path, self.type_movie)
         self.mvcovers = make_dir(self.mvpath, 'covers')
@@ -119,9 +116,53 @@ class MetaData:
         self.dbcon.row_factory = sqlite.Row # return results indexed by field names and not numbers so we can convert to dict
         self.dbcur = self.dbcon.cursor()
 
+        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
+        sql_select = 'SELECT tv_banners FROM addons'
+        sql_alter = 'ALTER TABLE addons ADD COLUMN tv_banners TEXT'
+        sql_update = "UPDATE addons SET tv_banners = 'false' where addon_id = 'plugin.video.icefilms'"
+        
+        try:    
+            self.dbcur.execute(sql_select)
+            matchedrow = self.dbcur.fetchone()            
+        except Exception:
+            print '************* tv_banner column does not exist - creating'
+            self.dbcur.execute(sql_alter)
+            self.dbcon.commit()
+            self.dbcur.execute(sql_update)
+            self.dbcon.commit()
+
+        sql_select = 'SELECT banner_url FROM tvshow_meta'
+        sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
+        try:
+            self.dbcur.execute(sql_select)
+            matchedrow = self.dbcur.fetchone()
+        except Exception:
+            print '************* banner_url column does not exist - creating temp table'
+            self.dbcur.execute(sql_alter)
+            self.dbcon.commit()
+
+        ## !!!!!!!!!!!!!!!!!!!!!!!
+
+
         # initialize cache db
         self._cache_create_movie_db()
 
+
+        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
+        sql_insert = 'INSERT INTO tvshow_meta (imdb_id, tvdb_id, title, cast, rating, duration, plot, mpaa, premiered, genre, studio, banner_url, cover_url, backdrop_url, backdrop_url, imgs_prepacked, overlay) SELECT * FROM tmp_tvshow_meta'
+        sql_select = 'SELECT imdb_id from tmp_tvshow_meta'
+        sql_drop = 'DROP TABLE tmp_tvshow_meta'
+        try:
+            self.dbcur.execute(sql_select)
+            matchedrow = self.dbcur.fetchone()
+            self.dbcur.execute(sql_insert)
+            self.dbcon.commit()
+            self.dbcur.execute(sql_drop)
+            self.dbcon.commit()
+        except Exception, e:
+            print '************* tmp_tvshow_meta does not exist: %s' % e
+
+        ## !!!!!!!!!!!!!!!!!!!!!!!
 
     def __del__(self):
         ''' Cleanup db when object destroyed '''
@@ -131,15 +172,27 @@ class MetaData:
 
     def _cache_create_movie_db(self):
         ''' Creates the cache tables if they do not exist.  '''   
-                        
+
         # Create Movie table
         self.dbcur.execute("CREATE TABLE IF NOT EXISTS movie_meta ("
-                           "imdb_id TEXT, tmdb_id TEXT, title TEXT, year INTEGER,"
-                           "director TEXT, writer TEXT, tagline TEXT, cast TEXT,"
-                           "rating FLOAT, duration TEXT, plot TEXT,"
-                           "mpaa TEXT, premiered TEXT, genre TEXT, studio TEXT,"
-                           "thumb_url TEXT, cover_url TEXT,"
-                           "trailer_url TEXT, backdrop_url TEXT,"
+                           "imdb_id TEXT, "
+                           "tmdb_id TEXT, "
+                           "title TEXT, "
+                           "year INTEGER,"
+                           "director TEXT, "
+                           "writer TEXT, "
+                           "tagline TEXT, cast TEXT,"
+                           "rating FLOAT, "
+                           "duration TEXT, "
+                           "plot TEXT,"
+                           "mpaa TEXT, "
+                           "premiered TEXT, "
+                           "genre TEXT, "
+                           "studio TEXT,"
+                           "thumb_url TEXT, "
+                           "cover_url TEXT, "
+                           "trailer_url TEXT, "
+                           "backdrop_url TEXT,"
                            "imgs_prepacked TEXT," # 'true' or 'false'. added to determine whether to load imgs from path not url (ie. if they are included in pre-packaged metadata container).
                            "overlay INTEGER,"
                            "UNIQUE(imdb_id, tmdb_id, title, year)"
@@ -150,11 +203,21 @@ class MetaData:
         
         # Create TV Show table
         self.dbcur.execute("CREATE TABLE IF NOT EXISTS tvshow_meta ("
-                           "imdb_id TEXT, tvdb_id TEXT, title TEXT, cast TEXT,"
-                           "rating FLOAT, duration TEXT, plot TEXT,"
-                           "mpaa TEXT, premiered TEXT, genre TEXT, studio TEXT,"
-                           "thumb_url TEXT, cover_url TEXT,"
-                           "trailer_url TEXT, backdrop_url TEXT,"
+                           "imdb_id TEXT, "
+                           "tvdb_id TEXT, "
+                           "title TEXT, "
+                           "cast TEXT,"
+                           "rating FLOAT, "
+                           "duration TEXT, "
+                           "plot TEXT,"
+                           "mpaa TEXT, "
+                           "premiered TEXT, "
+                           "genre TEXT, "
+                           "studio TEXT,"
+                           "banner_url TEXT, "
+                           "cover_url TEXT,"
+                           "trailer_url TEXT, "
+                           "backdrop_url TEXT,"
                            "imgs_prepacked TEXT," # 'true' or 'false'. added to determine whether to load imgs from path not url (ie. if they are included in pre-packaged metadata container).
                            "overlay INTEGER,"
                            "UNIQUE(imdb_id, tvdb_id, title)"
@@ -202,6 +265,7 @@ class MetaData:
                            "addon_id TEXT, "
                            "movie_covers TEXT, "
                            "tv_covers TEXT, "
+                           "tv_banners TEXT, "
                            "movie_backdrops TEXT, "
                            "tv_backdrops TEXT, "
                            "last_update TEXT, "
@@ -228,6 +292,7 @@ class MetaData:
         meta['imdb_id'] = imdb_id
         meta['tvdb_id'] = tvdb_id
         meta['title'] = name
+        meta['TVShowTitle'] = name        
         meta['rating'] = 0
         meta['duration'] = ''
         meta['plot'] = ''
@@ -237,7 +302,7 @@ class MetaData:
         meta['genre'] = ''
         meta['studio'] = ''
         meta['cast'] = []
-        meta['thumb_url'] = ''
+        meta['banner_url'] = ''
         
         #set whether that database row will be accompanied by pre-packed images.
         meta['imgs_prepacked'] = self.classmode
@@ -483,7 +548,7 @@ class MetaData:
             return False
 
 
-    def insert_meta_installed(self, addon_id, last_update, movie_covers='false', tv_covers='false', movie_backdrops='false', tv_backdrops='false'):
+    def insert_meta_installed(self, addon_id, last_update, movie_covers='false', tv_covers='false', tv_banners='false', movie_backdrops='false', tv_backdrops='false'):
         '''
         Insert a record into addons table
 
@@ -500,7 +565,7 @@ class MetaData:
         '''
 
         if addon_id:
-            sql_insert = "INSERT INTO addons(addon_id, movie_covers, tv_covers, movie_backdrops, tv_backdrops, last_update) VALUES (?,?,?,?,?,?)"
+            sql_insert = "INSERT INTO addons(addon_id, movie_covers, tv_covers, tv_banners, movie_backdrops, tv_backdrops, last_update) VALUES (?,?,?,?,?,?,?)"
         else:
             print 'Invalid addon id'
             return
@@ -508,14 +573,14 @@ class MetaData:
         print 'Inserting into addons table addon id: %s' % addon_id
         print 'SQL Insert: %s' % sql_insert        
         try:    
-            self.dbcur.execute(sql_insert, (addon_id, movie_covers, tv_covers, movie_backdrops, tv_backdrops, last_update))
+            self.dbcur.execute(sql_insert, (addon_id, movie_covers, tv_covers, tv_banners, movie_backdrops, tv_backdrops, last_update))
             self.dbcon.commit()            
         except Exception, e:
             print '************* Error inserting into cache db: %s' % e
             return
 
 
-    def update_meta_installed(self, addon_id, movie_covers=False, tv_covers=False, movie_backdrops=False, tv_backdrops=False, last_update=False):
+    def update_meta_installed(self, addon_id, movie_covers=False, tv_covers=False, tv_banners=False, movie_backdrops=False, tv_backdrops=False, last_update=False):
         '''
         Update a record into addons table
 
@@ -526,6 +591,7 @@ class MetaData:
         Kwargs:
             movie_covers (str): true/false if movie covers has been downloaded/installed
             tv_covers (str): true/false if tv covers has been downloaded/installed
+            tv_bannerss (str): true/false if tv banners has been downloaded/installed
             movie_backdrops (str): true/false if movie backdrops has been downloaded/installed
             tv_backdrops (str): true/false if tv backdrops has been downloaded/installed            
         '''
@@ -535,6 +601,8 @@ class MetaData:
                 sql_update = "UPDATE addons SET movie_covers = '%s'" % movie_covers
             elif tv_covers:
                 sql_update = "UPDATE addons SET tv_covers = '%s'" % tv_covers
+            elif tv_banners:
+                sql_update = "UPDATE addons SET tv_banners = '%s'" % tv_banners
             elif movie_backdrops:
                 sql_update = "UPDATE addons SET movie_backdrops = '%s'" % movie_backdrops
             elif tv_backdrops:
@@ -548,7 +616,7 @@ class MetaData:
             print 'Invalid addon id'
             return
         
-        print 'Updating addons table addon id: %s movie_covers: %s tv_covers: %s movie_backdrops: %s tv_backdrops: %s last_update: %s' % (addon_id, movie_covers, tv_covers, movie_backdrops, tv_backdrops, last_update)
+        print 'Updating addons table addon id: %s movie_covers: %s tv_covers: %s tv_banners: %s movie_backdrops: %s tv_backdrops: %s last_update: %s' % (addon_id, movie_covers, tv_covers, tv_banners, movie_backdrops, tv_backdrops, last_update)
         print 'SQL Update: %s' % sql_update
         try:    
             self.dbcur.execute(sql_update)
@@ -615,6 +683,10 @@ class MetaData:
         #Ensure we are not sending back any None values, XBMC doesn't like them
         meta = self._remove_none_values(meta)
         
+        #Add TVShowTitle infolabel
+        if type==self.type_tvshow:
+            meta['TVShowTitle'] = meta['title']
+        
         #if cache row says there are pre-packed images then either use them or create them
         if meta['imgs_prepacked'] == 'true':
 
@@ -625,6 +697,7 @@ class MetaData:
                 elif type == self.type_tvshow:
                     root_covers = self.tvcovers
                     root_backdrops = self.tvbackdrops
+                    root_banners = self.tvbanners
                 
                 if meta['cover_url']:
                     cover_name = self._picname(meta['cover_url'])
@@ -639,7 +712,15 @@ class MetaData:
                     if self.classmode == 'true':
                         self._downloadimages(meta['backdrop_url'], backdrop_path, backdrop_name)
                     meta['backdrop_url'] = os.path.join(backdrop_path, backdrop_name)
-        
+
+                if meta.has_key('banner_url'):
+                    if meta['banner_url']:
+                        banner_name = self._picname(meta['banner_url'])
+                        banner_path=os.path.join(root_banners, banner_name[0])
+                        if self.classmode == 'true':
+                            self._downloadimages(meta['banner_url'], banner_path, banner_name)
+                        meta['banner_url'] = os.path.join(banner_path, banner_name)        
+
         print 'Returned Meta:', meta
         return meta  
 
@@ -831,7 +912,7 @@ class MetaData:
                 )
             elif type == self.type_tvshow:
                 self.dbcur.execute("INSERT INTO " + table + " VALUES "
-                                   "(:imdb_id, :tvdb_id, :title, :cast, :rating, :duration, :plot, :mpaa, :premiered, :genre, :studio, :thumb_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
+                                   "(:imdb_id, :tvdb_id, :title, :cast, :rating, :duration, :plot, :mpaa, :premiered, :genre, :studio, :banner_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
                                    meta
                 )
             self.dbcon.commit()
@@ -1065,6 +1146,7 @@ class MetaData:
                 meta['imdb_id'] = imdb_id
                 meta['tvdb_id'] = tvdb_id
                 meta['title'] = show.name
+                meta['TVShowTitle'] = show.name
                 if str(show.rating) != '' and show.rating != None:
                     meta['rating'] = float(show.rating)
                 meta['duration'] = show.runtime
@@ -1079,7 +1161,7 @@ class MetaData:
                 if show.actors:
                     for actor in show.actors:
                         meta['cast'].append(actor)
-                meta['thumb_url'] = show.banner_url
+                meta['banner_url'] = show.banner_url
                 meta['imgs_prepacked'] = self.classmode
                 meta['cover_url'] = show.poster_url
                 meta['backdrop_url'] = show.fanart_url

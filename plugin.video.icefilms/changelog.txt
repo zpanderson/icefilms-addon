@@ -1,3 +1,12 @@
+v1.0.99.5 (Thursday, 22 December 2011):
+  - fixed video-seeking to ensure it deletes the file when finished playing, also added some extra logic around D&W to check if it's doing video-seeking
+  - added TV Banners option to metahandlers and Icefilms
+  - added individual settings for Movie & TV show cover art - now able to install exact items you want, just DB, DB + Movie Covers etc.
+  - removed 'Hide 2Shared Sources' addon setting
+  - removed sorting from search results and trimmed number results returned to 30 - still to add spoyser's pagination
+  - added grabbing the wait time for MU accounts from the website
+  
+
 v1.0.99.4 (Monday, 19 December 2011):
   - added spoyser's updated search, more results and sorted
   - enabled streaming from 2shared sources (zpanderson)
