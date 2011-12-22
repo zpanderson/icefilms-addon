@@ -952,7 +952,6 @@ def SEARCH(url):
             except:
                 pass
     setView('movies', 'movies-view')
-    xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_LABEL )    
     
                                
 def DoSearch(search):        
@@ -976,10 +975,9 @@ def DoSearch(search):
                  
             nextPage = nextPage + 1
 
-            #if len(results) > 100:
-            #    finished = True
+            if len(results) == 30:
+                finished = True
 
-        results = sorted(results, key=lambda result: result.title)
         find_meta_for_search_results(results, 100)
    
 
