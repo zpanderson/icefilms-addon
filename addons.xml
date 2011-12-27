@@ -35,7 +35,7 @@
 	</extension>
 </addon>
 
-<addon id="script.module.metahandler" name="metautils" version="0.0.2" provider-name="Eldorado (inspired by anarchintosh, westcoast, daledude, t0mm0)">
+<addon id="script.module.metahandler" name="metautils" version="0.0.3" provider-name="Eldorado (inspired by anarchintosh, westcoast, daledude, t0mm0)">
   <requires>
     <import addon="xbmc.python" version="2.0" />
     <import addon="script.module.elementtree"/>

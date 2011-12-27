@@ -121,25 +121,26 @@ class MetaData:
         sql_alter = 'ALTER TABLE addons ADD COLUMN tv_banners TEXT'
         sql_update = "UPDATE addons SET tv_banners = 'false' where addon_id = 'plugin.video.icefilms'"
         
-        try:    
-            self.dbcur.execute(sql_select)
-            matchedrow = self.dbcur.fetchone()            
-        except Exception:
-            print '************* tv_banner column does not exist - creating'
-            self.dbcur.execute(sql_alter)
-            self.dbcon.commit()
-            self.dbcur.execute(sql_update)
-            self.dbcon.commit()
-
-        sql_select = 'SELECT banner_url FROM tvshow_meta'
-        sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
-        try:
-            self.dbcur.execute(sql_select)
-            matchedrow = self.dbcur.fetchone()
-        except Exception:
-            print '************* banner_url column does not exist - creating temp table'
-            self.dbcur.execute(sql_alter)
-            self.dbcon.commit()
+        if not os.path.exists(self.videocache):
+            try:    
+                self.dbcur.execute(sql_select)
+                matchedrow = self.dbcur.fetchone()            
+            except Exception:
+                print '************* tv_banner column does not exist - creating'
+                self.dbcur.execute(sql_alter)
+                self.dbcon.commit()
+                self.dbcur.execute(sql_update)
+                self.dbcon.commit()
+    
+            sql_select = 'SELECT banner_url FROM tvshow_meta'
+            sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
+            try:
+                self.dbcur.execute(sql_select)
+                matchedrow = self.dbcur.fetchone()
+            except Exception:
+                print '************* banner_url column does not exist - creating temp table'
+                self.dbcur.execute(sql_alter)
+                self.dbcon.commit()
 
         ## !!!!!!!!!!!!!!!!!!!!!!!
 
