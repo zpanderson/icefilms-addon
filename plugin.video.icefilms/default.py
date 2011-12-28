@@ -2163,7 +2163,7 @@ def Stream_Source_with_parts(name,url):
                 finalPart = 1
             link2=Handle_Vidlink(videourl)
             listitem=Item_Meta(videoname)
-            print '********* Attempting to stream the next part: %s' % link2
+            print '--- Attempting to stream the next part: ' + str(link2) + ' from url: ' + str(videourl)
             
             mplayer = MyPlayer()
             mplayer.play(link2[0], listitem)
