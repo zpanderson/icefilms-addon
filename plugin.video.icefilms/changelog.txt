@@ -1,3 +1,6 @@
+v1.0.99.6 (Monday, 2 January 2012):
+  - Fix for megaupload free user account changes
+  
 v1.0.99.5 (Thursday, 22 December 2011):
   - fixed video-seeking to ensure it deletes the file when finished playing, also added some extra logic around D&W to check if it's doing video-seeking
   - added TV Banners option to metahandlers and Icefilms
