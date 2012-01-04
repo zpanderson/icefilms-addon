@@ -195,9 +195,11 @@ class TMDB(object):
                 
         if self._upd_key(meta, 'rating'):
             print '-- IMDB - Updating Rating'
-            temp=imdb_meta['Rating']
-            if temp != 'N/A' and temp !='' and temp != None:
-                meta['rating']=temp
+            imdb_rating = imdb_meta['Rating']
+            if imdb_rating not in ('N/A', '', None):
+                meta['rating'] = imdb_rating
+            else:
+                meta['rating'] = meta['tmdb_rating']
                 
         if self._upd_key(meta, 'genre'):
             print '-- IMDB - Updating Genre'
@@ -306,7 +308,12 @@ class TMDB(object):
                 meta = {}
             else:               
                 
-                if meta['overview'] == 'None' or meta['overview'] == '' or meta['overview'] == 'TBD' or meta['overview'] == 'No overview found.' or meta['rating'] == 0 or meta['runtime'] == 0 or str(meta['genres']) == '[]' or str(meta['posters']) == '[]' or meta['released'] == None:
+                #Set rating to 0 so that we can force it to be grabbed from IMDB
+                meta['tmdb_rating'] = meta['rating']
+                meta['rating'] = 0
+                
+                #Update any missing information from IDMB
+                if meta['overview'] == 'None' or meta['overview'] == '' or meta['overview'] == 'TBD' or meta['overview'] == 'No overview found.' or meta['rating'] == 0 or meta['runtime'] == 0 or meta['runtime'] == None or str(meta['genres']) == '[]' or str(meta['posters']) == '[]' or meta['released'] == None:
                     print 'Some info missing in TMDB for Movie *** %s ***. Will search imdb for more' % imdb_id
                     imdb_meta = self.search_imdb(name, imdb_id)
                     if imdb_meta:
