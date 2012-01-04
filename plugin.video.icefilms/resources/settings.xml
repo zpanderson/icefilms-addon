@@ -34,7 +34,7 @@
 	<setting id="auto-view" type="bool" label="30400" default="false"/>
 	<setting id="movies-view" type="number" label="30401" default="503" enable="!eq(-1,false)"/>
 	<setting id="tvshows-view" type="number" label="30402" default="503" enable="!eq(-2,false)"/>
-	<setting id="seasons-view" type="number" label="30403" default="503" enable="!eq(-3,false)"/>	
+	<setting id="seasons-view" type="number" label="30403" default="504" enable="!eq(-3,false)"/>	
 	<setting id="episodes-view" type="number" label="30404" default="504" enable="!eq(-4,false)"/>
 	<setting id="default-view" type="number" label="30405" default="50"/>
    </category>
