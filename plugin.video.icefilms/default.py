@@ -588,24 +588,6 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                         addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
                     else:
                         #add directories with meta
-                        #Code that would scrape last aired episode date for tvshows in favorites
-                        '''
-                        if contentType == 'tvshow':
-                            tvdb_url = 'http://thetvdb.com/?tab=seasonall&id=%s&lid=7' % meta['tvdb_id']
-                            source=GetURL(tvdb_url)
-                            aireddates = re.compile('<tr><td class="(.+?)"><a href="(.+?)">(.+?)</a></td><td class="(.+?)"><a href="(.+?)</a></td><td class="(.+?)">(.+?)</td><td class="(.+?)">').findall(source)
-                            lastaired = str(aireddates[len(aireddates)-1][6])
-                            today = datetime.date.today()
-                            print today
-                            if datetime.datetime.strptime(lastaired,"%Y-%m-%d").date() > today:
-                                i = 2
-                                while datetime.datetime.strptime(lastaired,"%Y-%m-%d").date() > today:                                
-                                    lastaired = str(aireddates[len(aireddates)-i][6])
-                                    print 'need to go back %s episodes' % str(i-1)
-                                    i += 1                                
-                            print 'last aired: ' + lastaired
-                            meta['premiered'] = lastaired
-                            '''
                         addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), meta_install=meta_installed)
                 else:
                     #add all the items without meta
@@ -1961,7 +1943,7 @@ def Stream_Source(name,url):
     
     callEndOfDirectory = False
     
-    vidname=handle_file('videoname','open')
+    vidname=cache.get('videoname')
     mypath = Get_Path(name,vidname)
     listitem = Item_Meta(name)
 
