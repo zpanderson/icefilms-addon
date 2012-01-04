@@ -116,54 +116,8 @@ class MetaData:
         self.dbcon.row_factory = sqlite.Row # return results indexed by field names and not numbers so we can convert to dict
         self.dbcur = self.dbcon.cursor()
 
-        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
-        sql_select = 'SELECT tv_banners FROM addons'
-        sql_alter = 'ALTER TABLE addons ADD COLUMN tv_banners TEXT'
-        sql_update = "UPDATE addons SET tv_banners = 'false' where addon_id = 'plugin.video.icefilms'"
-        
-        if not os.path.exists(self.videocache):
-            try:    
-                self.dbcur.execute(sql_select)
-                matchedrow = self.dbcur.fetchone()            
-            except Exception:
-                print '************* tv_banner column does not exist - creating'
-                self.dbcur.execute(sql_alter)
-                self.dbcon.commit()
-                self.dbcur.execute(sql_update)
-                self.dbcon.commit()
-    
-            sql_select = 'SELECT banner_url FROM tvshow_meta'
-            sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
-            try:
-                self.dbcur.execute(sql_select)
-                matchedrow = self.dbcur.fetchone()
-            except Exception:
-                print '************* banner_url column does not exist - creating temp table'
-                self.dbcur.execute(sql_alter)
-                self.dbcon.commit()
-
-        ## !!!!!!!!!!!!!!!!!!!!!!!
-
-
         # initialize cache db
         self._cache_create_movie_db()
-
-
-        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
-        sql_insert = 'INSERT INTO tvshow_meta (imdb_id, tvdb_id, title, cast, rating, duration, plot, mpaa, premiered, genre, studio, banner_url, cover_url, backdrop_url, backdrop_url, imgs_prepacked, overlay) SELECT * FROM tmp_tvshow_meta'
-        sql_select = 'SELECT imdb_id from tmp_tvshow_meta'
-        sql_drop = 'DROP TABLE tmp_tvshow_meta'
-        try:
-            self.dbcur.execute(sql_select)
-            matchedrow = self.dbcur.fetchone()
-            self.dbcur.execute(sql_insert)
-            self.dbcon.commit()
-            self.dbcur.execute(sql_drop)
-            self.dbcon.commit()
-        except Exception, e:
-            print '************* tmp_tvshow_meta does not exist: %s' % e
-
-        ## !!!!!!!!!!!!!!!!!!!!!!!
 
     def __del__(self):
         ''' Cleanup db when object destroyed '''
@@ -702,14 +656,14 @@ class MetaData:
                 
                 if meta['cover_url']:
                     cover_name = self._picname(meta['cover_url'])
-                    cover_path = os.path.join(root_covers, cover_name[0])
+                    cover_path = os.path.join(root_covers, cover_name[0].lower())
                     if self.classmode == 'true':
                         self._downloadimages(meta['cover_url'], cover_path, cover_name)
                     meta['cover_url'] = os.path.join(cover_path, cover_name)
                 
                 if meta['backdrop_url']:
                     backdrop_name = self._picname(meta['backdrop_url'])
-                    backdrop_path=os.path.join(root_backdrops, backdrop_name[0])
+                    backdrop_path=os.path.join(root_backdrops, backdrop_name[0].lower())
                     if self.classmode == 'true':
                         self._downloadimages(meta['backdrop_url'], backdrop_path, backdrop_name)
                     meta['backdrop_url'] = os.path.join(backdrop_path, backdrop_name)
@@ -717,7 +671,7 @@ class MetaData:
                 if meta.has_key('banner_url'):
                     if meta['banner_url']:
                         banner_name = self._picname(meta['banner_url'])
-                        banner_path=os.path.join(root_banners, banner_name[0])
+                        banner_path=os.path.join(root_banners, banner_name[0].lower())
                         if self.classmode == 'true':
                             self._downloadimages(meta['banner_url'], banner_path, banner_name)
                         meta['banner_url'] = os.path.join(banner_path, banner_name)        
@@ -785,15 +739,14 @@ class MetaData:
             DICT of matched meta data or None if no match.
         '''        
         if type == self.type_movie:
-            table='movie_meta'
+            sql_select = "SELECT * FROM movie_meta"
+            if imdb_id:
+                sql_select = sql_select + " WHERE imdb_id = '%s'" % imdb_id
+            else:
+                sql_select = sql_select + " WHERE tmdb_id = '%s'" % tmdb_id
         elif type == self.type_tvshow:
-            table='tvshow_meta'
-
-        if imdb_id:
-            sql_select = "SELECT * FROM %s WHERE imdb_id = '%s'" % (table, imdb_id)  
-        else:
-            sql_select = "SELECT * FROM %s WHERE tmdb_id = '%s'" % (table, tmdb_id)  
-        
+            sql_select = "SELECT a.*, COUNT(b.imdb_id) AS episode FROM tvshow_meta a LEFT JOIN episode_meta b ON a.imdb_id=b.imdb_id WHERE a.imdb_id = '%s'" % imdb_id
+       
         print 'Looking up in local cache by id for: %s %s %s' % (type, imdb_id, tmdb_id)
         print 'SQL Select: %s' % sql_select        
         try:    
@@ -826,14 +779,13 @@ class MetaData:
             DICT of matched meta data or None if no match.
         '''        
         if type == self.type_movie:
-            table='movie_meta'
+            sql_select = "SELECT * FROM movie_meta WHERE title = '%s'" % name
         elif type == self.type_tvshow:
-            table='tvshow_meta'
+            sql_select = "SELECT a.*, COUNT(b.imdb_id) AS episode FROM tvshow_meta a LEFT JOIN episode_meta b ON a.imdb_id=b.imdb_id WHERE title = '%s'" % name
         
         name =  self._clean_string(name.lower())
         print 'Looking up in local cache by name for: %s %s %s' % (type, name, year)
         
-        sql_select = "SELECT * FROM %s WHERE title = '%s'" % (table, name)
         if year:
             sql_select = sql_select + " AND year = %s" % year
         print 'SQL Select: %s' % sql_select            
