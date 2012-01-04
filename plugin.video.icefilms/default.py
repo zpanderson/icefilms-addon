@@ -27,7 +27,7 @@ prepare_zip = False
 ##############################################################################################################
 
 
-import xbmc,xbmcplugin,xbmcgui,xbmcaddon
+import xbmc,xbmcplugin,xbmcgui,xbmcaddon, datetime
 
 #get path to me
 addon_id = 'plugin.video.icefilms'
@@ -43,6 +43,17 @@ from metahandler import metahandlers
 from cleaners import *
 from xgoogle.BeautifulSoup import BeautifulSoup,BeautifulStoneSoup
 from xgoogle.search import GoogleSearch
+#Common Cache
+import xbmcvfs
+# plugin constants
+dbg = True # Set to false if you don't want debugging
+
+try:
+  import StorageServer
+except:
+  import storageserverdummy as StorageServer
+cache = StorageServer.StorageServer()
+cache.table_name = "icefilms" # Name of your plugin.
    
 ####################################################
 
@@ -128,39 +139,7 @@ art = icepath+'/resources/art'
 
 def handle_file(filename,getmode=''):
      #bad python code to add a get file routine.
-     if filename == 'captcha':
-          return_file = xbmcpath(icedatapath,'CaptchaChallenge.txt')
-     elif filename == 'mirror':
-          return_file = xbmcpath(icedatapath,'MirrorPageSource.txt')
-     elif filename == 'episodesrc':
-          return_file = xbmcpath(icedatapath,'EpisodePageSource.txt')
-     elif filename == 'pageurl':
-          return_file = xbmcpath(icedatapath,'PageURL.txt')
-
-     elif filename == 'mediapath':
-          return_file = xbmcpath(downinfopath,'MediaPath.txt')
-     #extra thing to provide show name with year if going via episode list.
-     elif filename == 'mediatvshowname':
-          return_file = xbmcpath(downinfopath,'TVShowName.txt')
-     #extra thing to provide season name.
-     elif filename == 'mediatvseasonname':
-          return_file = xbmcpath(downinfopath,'TVSeasonName.txt')
-
-     elif filename == 'videoname':
-          return_file = xbmcpath(metapath,'VideoName.txt')
-     elif filename == 'sourcename':
-          return_file = xbmcpath(metapath,'SourceName.txt')
-     elif filename == 'description':
-          return_file = xbmcpath(metapath,'Description.txt')
-     elif filename == 'poster':
-          return_file = xbmcpath(metapath,'Poster.txt')
-     elif filename == 'mpaa':
-          return_file = xbmcpath(metapath,'mpaa.txt')
-     elif filename == 'listpic':
-          return_file = xbmcpath(metapath,'listpic.txt')
-     elif filename == 'sourceList':
-          return_file = xbmcpath(metapath,'SourceList.txt')
-     elif filename == 'smallicon':
+     if filename == 'smallicon':
           return_file = xbmcpath(art,'smalltransparent2.png')
      elif filename == 'homepage':
           return_file = xbmcpath(art,'homepage.png')
@@ -609,6 +588,24 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                         addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
                     else:
                         #add directories with meta
+                        #Code that would scrape last aired episode date for tvshows in favorites
+                        '''
+                        if contentType == 'tvshow':
+                            tvdb_url = 'http://thetvdb.com/?tab=seasonall&id=%s&lid=7' % meta['tvdb_id']
+                            source=GetURL(tvdb_url)
+                            aireddates = re.compile('<tr><td class="(.+?)"><a href="(.+?)">(.+?)</a></td><td class="(.+?)"><a href="(.+?)</a></td><td class="(.+?)">(.+?)</td><td class="(.+?)">').findall(source)
+                            lastaired = str(aireddates[len(aireddates)-1][6])
+                            today = datetime.date.today()
+                            print today
+                            if datetime.datetime.strptime(lastaired,"%Y-%m-%d").date() > today:
+                                i = 2
+                                while datetime.datetime.strptime(lastaired,"%Y-%m-%d").date() > today:                                
+                                    lastaired = str(aireddates[len(aireddates)-i][6])
+                                    print 'need to go back %s episodes' % str(i-1)
+                                    i += 1                                
+                            print 'last aired: ' + lastaired
+                            meta['premiered'] = lastaired
+                            '''
                         addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), meta_install=meta_installed)
                 else:
                     #add all the items without meta
@@ -780,13 +777,6 @@ def ICEHOMEPAGE(url):
         addDir('Recently Added',iceurl+'index',60,os.path.join(art,'recently added.png'))
         addDir('Latest Releases',iceurl+'index',61,os.path.join(art,'latest releases.png'))
         addDir('Being Watched Now',iceurl+'index',62,os.path.join(art,'being watched now.png'))
-
-        #delete tv show name file
-        tvshowname=handle_file('mediatvshowname','')
-        try:
-               os.remove(tvshowname)
-        except:
-               pass
         setView(None, 'default-view')
 
 
@@ -937,20 +927,9 @@ def SEARCH(url):
     if (kb.isConfirmed()):
         search = kb.getText()
         if search != '':
-            tvshowname=handle_file('mediatvshowname','')
-            seasonname=handle_file('mediatvseasonname','')
             DoEpListSearch(search)
             DoSearch(search)
-                       
-            #delete tv show name file, do the same for season name file
-            try:
-                os.remove(tvshowname)
-            except:
-                pass
-            try:
-                os.remove(seasonname)
-            except:
-                pass
+            
     setView('movies', 'movies-view')
     
                                
@@ -1189,9 +1168,8 @@ def TVSEASONS(url, imdb_id):
         source=GetURL(url)
 
         #Save the tv show name for use in special download directories.
-        tvshowname=handle_file('mediatvshowname','')
         match=re.compile('<h1>(.+?)<a class').findall(source)
-        save(tvshowname,match[0])
+        cache.set('tvshowname',match[0])
         r=re.search('(.+?) [(][0-9]{4}[)]',match[0])
         if r:
             showname = r.group(1)
@@ -1204,10 +1182,10 @@ def TVSEASONS(url, imdb_id):
           imgcheck2 = re.search('<iframe src=http://referer.us/f/\?url=', link)
           if imgcheck1 is not None:
                match4=re.compile('<a class=img target=_blank href=(.+?)>').findall(link)
-               save(posterfile,match4[0])
+               cache.set('poster',match4[0])
           if imgcheck2 is not None:
                match5=re.compile('<iframe src=http://referer.us/f/\?url=(.+?) width=').findall(link)
-               save(posterfile,match5[0])
+               cache.set('poster',match5[0])
         except:
           pass
         
@@ -1235,7 +1213,7 @@ def TVSEASONS(url, imdb_id):
                 TVEPISODES(seasons.strip(),source=ep_list,imdb_id=''+str(imdb_id))
             else:
                 #save episode page source code
-                save(handle_file('episodesrc'),ep_list)
+                cache.set('episodesrc',repr(ep_list))
                 #add season directories
                 if meta_installed and meta_setting=='true' and season_meta:
                     temp = season_meta[num]
@@ -1248,11 +1226,11 @@ def TVSEASONS(url, imdb_id):
 
 def TVEPISODES(name,url=None,source=None,imdb_id=None):
     #Save the season name for use in the special download directories.
-    save(handle_file('mediatvseasonname'),name)
+    cache.set('mediatvseasonname',name)
 
     #If source wasn't passed to function, open the file it should be saved to.
     if source is None:
-        source = openfile(handle_file('episodesrc'))
+        source = eval(cache.get('episodesrc'))
         
     #special hack to deal with annoying re problems when recieving brackets ( )
     if re.search('\(',name) is not None:
@@ -1293,30 +1271,12 @@ def TVEPLINKS(source, season, imdb_id):
 def LOADMIRRORS(url):
      # This proceeds from the file page to the separate frame where the mirrors can be found,
      # then executes code to scrape the mirrors
-     link=GetURL(url)
-     #print link
-     posterfile=handle_file('poster','')
-     videonamefile=handle_file('videoname','')
-     descriptionfile=handle_file('description','')
-     mpaafile=handle_file('mpaa','')
-     mediapathfile=handle_file('mediapath','')
-     
+     link=GetURL(url)  
      
      #---------------Begin phantom metadata getting--------
 
      #Save metadata on page to files, for use when playing.
      # Also used for creating the download directory structures.
-     
-     try:
-          os.remove(posterurl)
-     except:
-          print 'posterurl does not exist'
-
-     try:
-          os.remove(mpaafile)
-     except:
-          print 'mpaafile does not exist'        
-     
 
      # get and save videoname     
      namematch=re.compile('''<span style="font-size:large;color:white;">(.+?)</span>''').findall(link)
@@ -1326,14 +1286,14 @@ def LOADMIRRORS(url):
          return
      
      try:
-         save(videonamefile,namematch[0])
+         cache.set('videoname',namematch[0])
      except:
          pass
 
      # get and save description
      match2=re.compile('<th>Description:</th><td>(.+?)<').findall(link)
      try:
-          save(descriptionfile,match2[0])
+          cache.set('description',match2[0])
      except:
           pass
      
@@ -1343,10 +1303,10 @@ def LOADMIRRORS(url):
           imgcheck2 = re.search('<iframe src=/noref.php\?url=', link)
           if imgcheck1 is not None:
                match4=re.compile('<img width=250 src=(.+?) style').findall(link)
-               save(posterfile,match4[0])
+               cache.set('poster',match4[0])
           if imgcheck2 is not None:
                match5=re.compile('<iframe src=/noref.php\?url=(.+?) width=').findall(link)
-               save(posterfile,match5[0])
+               cache.set('poster',match5[0])
      except:
           pass
 
@@ -1356,7 +1316,7 @@ def LOADMIRRORS(url):
           match4=re.compile('<th>MPAA Rating:</th><td>(.+?)</td>').findall(link)
           mpaa=re.sub('Rated ','',match4[0])
           try:
-               save(mpaafile,mpaa)
+               cache.set('mpaa',mpaa)
           except:
                pass
 
@@ -1365,10 +1325,9 @@ def LOADMIRRORS(url):
      epcheck1 = re.search('Episodes</a>', link)
      epcheck2 = re.search('Episode</a>', link)
      if epcheck1 is not None or epcheck2 is not None:
-          shownamepath=handle_file('mediatvshowname','')
-          if os.path.exists(shownamepath):
+          if cache.get('mediatvshowname'):
                #open media file if it exists, as that has show name with date.
-               showname=openfile(shownamepath)
+               showname=cache.get('mediatvshowname')
           else:
                #fall back to scraping show name without date from the page.
                print 'USING FALLBACK SHOW NAME'
@@ -1376,18 +1335,17 @@ def LOADMIRRORS(url):
                showname=fallbackshowname[0]
           try:
                #if season name file exists
-               seasonnamepath=handle_file('mediatvseasonname','')
-               if os.path.exists(seasonnamepath):
-                    seasonname=openfile(seasonnamepath)
-                    save(mediapathfile,'TV Shows/'+showname+'/'+seasonname)
+               if cache.get('mediatvshowname'):
+                    seasonname=cache.get('mediatvshowname')
+                    cache.set('mediapath','TV Shows/'+showname+'/'+seasonname)
                else:
-                    save(mediapathfile,'TV Shows/'+showname)
+                    cache.set('mediapath','TV Shows/'+showname)
           except:
                print "FAILED TO SAVE TV SHOW FILE PATH!"
      else:
           
           try:
-              save(mediapathfile,'Movies/'+namematch[0])
+              cache.set('mediapath','Movies/'+namematch[0])
           except:
               pass
 
@@ -1432,24 +1390,21 @@ def RECAPTCHA(url):
      for challenge in matchy:
           imageurl='http://www.google.com/recaptcha/api/image?c='+challenge
 
-     captchafile=handle_file('captcha','')
-     pageurlfile=handle_file('pageurl','')
-
      #hacky method --- save all captcha details and mirrorpageurl to file, to reopen in next step
-     save(captchafile, challenge)
-     save(pageurlfile, url)
+     cache.set('captcha', challenge)
+     cache.set('pageurl', url)
 
      #addDir uses imageurl as url, to avoid xbmc displaying old cached image as the fresh captcha
      addDir('Enter Captcha - Type the letters',imageurl,99,imageurl)
 
 def CAPTCHAENTER(surl):
-     url=handle_file('pageurl','open')
+     url=cache.get('pageurl')
      kb = xbmc.Keyboard('', 'Type the letters in the captcha image', False)
      kb.doModal()
      if (kb.isConfirmed()):
           userInput = kb.getText()
           if userInput != '':
-               challengeToken=handle_file('captcha','open')
+               challengeToken=cache.get('captcha')
                print 'challenge token: '+challengeToken
                parameters = urllib.urlencode({'recaptcha_challenge_field': challengeToken, 'recaptcha_response_field': userInput})
                source = GetURL(url, parameters)
@@ -1467,9 +1422,8 @@ def GETMIRRORS(url,link):
 # Displays in three directory levels: HD / DVDRip etc , Source, PART
     print "getting mirrors for: %s" % url
         
-    #hacky method -- save page source to file
-    mirrorfile=handle_file('mirror','')
-    save(mirrorfile, link)
+    #hacky method -- save page source to cache
+    cache.set('mirror', link)
     
     #check for the existence of categories, and set values.
     if re.search('<div class=ripdiv><b>DVDRip / Standard Def</b>', link) is not None: dvdrip = 1
@@ -1522,7 +1476,7 @@ def GETMIRRORS(url,link):
 
                 
 def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
-    	
+       
         if dvdrip == 1:
                 addDir('DVDRip',url,101,os.path.join(art,'source_types','dvd.png'), imdb=imdbnum)
         if hd720p == 1:
@@ -1536,23 +1490,8 @@ def Add_Multi_Parts(name,url,icon,sourcenumber):
      StackMulti = selfAddon.getSetting('stack-multi-part')
 
      if StackMulti=='true':
-         sourceListFile=handle_file('sourceList','')
-         allSources = openfile(sourceListFile)
-         sourceList = string.split(allSources, ',')
-         i = 0
-         videoname = [''] * 30
-         urls = [''] * 30
-         while i < len(sourceList) - 1:
-             tmp = string.split(sourceList[i], ';')
-             videoname[i] = tmp[0]
-             urls[i] = tmp[1]
-             #print 'This is the name: ' + videoname[i] + ' and this is the url: ' + urls[i]
-             i += 1
 
-         #save list of urls to later be stacked when user selects part
-         is_part_one = videoname[i-1].rfind('Part 1')
-         if is_part_one != -1:
-             name = videoname[i-1].replace('Part 1', 'Multiple Parts')
+             name = name.replace('Part 1', 'Multiple Parts')
              addExecute(name,url,199,icon)
 
      else:
@@ -1564,11 +1503,8 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
      sourcestring='Source #'+sourcenumber
      checkforsource = re.search(sourcestring, scrap)
      
-     sourceListFile=handle_file('sourceList','')
-
      #if source exists proceed.
      if checkforsource is not None:
-          #print 'Source #'+sourcenumber+' exists'
           
           #check if source contains multiple parts
           multiple_part = re.search('<p>Source #'+sourcenumber+':', scrap)
@@ -1591,16 +1527,20 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
                         if ismega is not None:
                               partname='Part '+partnum
                               fullname=sourcestring+' | MU | '+partname
-                              appendfile(sourceListFile, fullname + '; ' + url + ',\n')
-                              Add_Multi_Parts(fullname,url,megapic,sourcenumber)
-                              #Add_Multi_Parts(fullname,url,megapic)
+                              try:
+                                  sources = eval(cache.get("source"+str(sourcenumber)+"parts"))
+                              except:
+                                  sources = {partnum: url}
+                                  print 'sources havent been set yet...'  
+                              sources[partnum] = url                          
+                              cache.set("source"+str(sourcenumber)+"parts", repr(sources))
+                              if partnum == '1':
+                                  Add_Multi_Parts(fullname,url,megapic,sourcenumber)
                         elif is2shared is not None:
                              #print sourcestring+' is hosted by 2shared' 
                              part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
                              for url,name in part:
-                                  #print 'scraped2shared: '+url
                                   fullurl='http://www.2shared.com/'+url
-                                  #print '2sharedfullurl: '+fullurl
                                   partname='Part '+name
                                   fullname=sourcestring+' | 2S  | '+partname
                                   Add_Multi_Parts(fullname,url,shared2pic)
@@ -1646,9 +1586,6 @@ def GetSource(id, args, cookie):
 
 
 def SOURCE(page, sources):
-          # open the sourcelist txt file and remove previous sources
-          sourceListFile=handle_file('sourceList','')
-          save(sourceListFile, '')
           # get settings
           megapic=handle_file('megapic','')
           shared2pic=handle_file('shared2pic','')
@@ -1685,7 +1622,7 @@ def SOURCE(page, sources):
           print "saved cookie: %s" % cookie
 
           #add cached source
-          vidname=handle_file('videoname','open')
+          vidname=cache.get('videoname')
           dlDir = Get_Path("noext","")
     
           listitem=Item_Meta(vidname)
@@ -1719,7 +1656,7 @@ def SOURCE(page, sources):
           setView(None, 'default-view')
 
 def DVDRip(url):
-        link=handle_file('mirror','open')
+        link=cache.get('mirror')
 #string for all text under standard def border
         defcat=re.compile('<div class=ripdiv><b>DVDRip / Standard Def</b>(.+?)</div>').findall(link)
         for scrape in defcat:
@@ -1727,7 +1664,7 @@ def DVDRip(url):
         setView(None, 'default-view')
 
 def HD720p(url):
-        link=handle_file('mirror','open')
+        link=cache.get('mirror')
 #string for all text under hd720p border
         defcat=re.compile('<div class=ripdiv><b>HD 720p</b>(.+?)</div>').findall(link)
         for scrape in defcat:
@@ -1735,7 +1672,7 @@ def HD720p(url):
         setView(None, 'default-view')
 
 def DVDScreener(url):
-        link=handle_file('mirror','open')
+        llink=cache.get('mirror')
 #string for all text under dvd screener border
         defcat=re.compile('<div class=ripdiv><b>DVD Screener</b>(.+?)</div>').findall(link)
         for scrape in defcat:
@@ -1743,7 +1680,7 @@ def DVDScreener(url):
         setView(None, 'default-view')
         
 def R5R6(url):
-        link=handle_file('mirror','open')
+        link=cache.get('mirror')
 #string for all text under r5/r6 border
         defcat=re.compile('<div class=ripdiv><b>R5/R6 DVDRip</b>(.+?)</div>').findall(link)
         for scrape in defcat:
@@ -1866,7 +1803,7 @@ def Get_Path(srcname,vidname):
           SpecialDirs=selfAddon.getSetting('use-special-structure')
 
           if SpecialDirs == 'true':
-               mediapath=Clean_Windows_String(os.path.normpath(handle_file('mediapath','open')))
+               mediapath=Clean_Windows_String(os.path.normpath(cache.get('mediapath')))
                mediapath=os.path.join(initial_path,mediapath)              
                
                if not os.path.exists(mediapath):
@@ -1892,7 +1829,7 @@ def Item_Meta(name):
           # very important that things are contained within try blocks, because streaming will fail if something in this function fails.
 
           #set name and description, unicode cleaned.
-          try: open_vidname=handle_file('videoname','open')
+          try: open_vidname=cache.get('videoname')
           except:
                vidname = ''
                print 'OPENING VIDNAME FAILED!'
@@ -1903,7 +1840,7 @@ def Item_Meta(name):
                     vidname = open_vidname
                else: vidname = get_vidname
 
-          try: open_desc=handle_file('description','open')
+          try: open_desc=cache.get('description')
           except:
                description = ''
                print 'OPENING DESCRIPTION FAILED!'
@@ -1915,11 +1852,11 @@ def Item_Meta(name):
                else: description = get_desc
           
           #set other metadata strings from strings saved earlier
-          try: get_poster=handle_file('poster','open')
+          try: get_poster=cache.get('poster')
           except: poster = ''
           else: poster = get_poster
 
-          try: get_mpaa=handle_file('mpaa','open')
+          try: get_mpaa=cache.get('mpaa')
           except: mpaa = None
           else: mpaa = get_mpaa
           
@@ -2087,49 +2024,23 @@ def Stream_Source_with_parts(name,url):
     global totalTime
     global watched_percent
     global finalPart
-    #get the list of sources
-    sourceListFile=handle_file('sourceList','')
-    allSources = openfile(sourceListFile)
-    sourceList = string.split(allSources, ',')
-    #Find the index of part 1
-    name = name.replace('Multiple Parts', 'Part 1')
-    name = name.strip()
-    #print name
-    i = 0
-    index = -1
-    partlist = []
-    #Iterate through the sourceList and determine which parts are from the same source.
-    while i < len(sourceList)-1:
-        if sourceList[i].startswith(name):
-            index = i
-            #store the source number and part number
-            source_num_tmp = re.search('Source #(.+?) |',sourceList[index])
-            source_num = source_num_tmp.group(1)
-            part_num_tmp = re.search('Part (.+?)',sourceList[index])
-            part_num = part_num_tmp.group(1)
-            #check for additional parts
-        elif index != -1:
-            part = sourceList[i]
-            source_num_tmp = re.search('Source #(.+?) |',part.strip())
-            source_num2 = source_num_tmp.group(1)
-            part_num_tmp = re.search('Part (.+?)',part.strip())
-            part_num2 = part_num_tmp.group(1)
-            if source_num2 == source_num:
-                #part is from the same source so add it to the partlist to be played.
-                partlist.append(part)
-        i += 1
-    ###
+    #Find which source
+    sourcenumber = name[8:9]
+    #print 'this is the sourcenum %s from name %s' % (sourcenumber, name)
+    source = eval(cache.get("source"+str(sourcenumber)+"parts"))
+
     watched_percent = get_watched_percent()
-    link=Handle_Vidlink(url)
+    link=Handle_Vidlink(source['1'])
     listitem=Item_Meta(name)
     print '--- Attempting to stream file: ' + str(link) + ' from url: ' + str(url)
      
     mplayer = MyPlayer()
     mplayer.play(link[0], listitem)
 
-
+    index = 2
+    
     # first part is playing... now wait to start 2nd part
-    while(1):
+    while finalPart != 1:
         #Set the currentTime and totalTime to arbitrary numbers. This keeps it from pre-maturely starting the 3rd part immediately after the 2nd part starts
         # using currentTime and totalTime from the first part.
         currentTime = 0
@@ -2148,27 +2059,18 @@ def Stream_Source_with_parts(name,url):
         if currentTime > totalTime-3:
             xbmc.sleep(4000)
             #Check the part list to see if there are parts remaining
-            try:
-                tmp = string.split(partlist[0], ';')
-            except IndexError:
-                #IndexError means there are no more parts so we should break
-                print 'There are no parts remaining!'
-                break
-            #Retrieve the file name and url from partlist.
-            videoname = tmp[0]
-            videourl = tmp[1].strip()
-            #so the player knows that after this part mark watched
-            if len(partlist) == 1:
-                print 'This is the final part!'
-                finalPart = 1
-            link2=Handle_Vidlink(videourl)
-            listitem=Item_Meta(videoname)
-            print '--- Attempting to stream the next part: ' + str(link2) + ' from url: ' + str(videourl)
-            
-            mplayer = MyPlayer()
-            mplayer.play(link2[0], listitem)
-            #Remove part that is now playing from the partlist
-            partlist.pop(0)
+            if source[str(index)]:
+                link2=Handle_Vidlink(source[str(index)])
+                listitem=Item_Meta(name)
+                try:
+                    nextPart = source[str(index+1)]
+                except:
+                    print 'Attempting to stream the final part: %s' % str(link2)
+                    finalPart = 1
+                    pass
+                mplayer = MyPlayer()
+                mplayer.play(link2[0], listitem)
+                index+=1
         xbmc.sleep(500) 
 
 
@@ -2196,7 +2098,7 @@ class MyPlayer (xbmc.Player):
             print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
             if percentWatched >= watched_percent:
                 #set watched
-                vidname=handle_file('videoname','open')
+                vidname=cache.get('videoname')
                 video = get_video_name(vidname)
                 print 'Auto-Watch - Setting %s to watched' % video
                 ChangeWatched(imdbnum, video_type, video['name'], season_num, episode_num, video['year'], watched=7)
@@ -2210,7 +2112,7 @@ class MyPlayer (xbmc.Player):
             print 'current time: ' + str(currentTime) + ' total time: ' + str(totalTime) + ' percent watched: ' + str(percentWatched)
             if percentWatched >= watched_percent and totalTime > 1:
                 #set watched
-                vidname=handle_file('videoname','open')
+                vidname=cache.get('videoname')
                 video = get_video_name(vidname)
                 print 'Auto-Watch - Setting %s to watched' % video            
                 ChangeWatched(imdbnum, video_type, video['name'], season_num, episode_num, video['year'], watched=7)
@@ -2311,7 +2213,7 @@ class SmallFile(Exception):
 def Download_And_Play(name,url, video_seek=False):
 
     #get proper name of vid                                                                                                           
-    vidname=handle_file('videoname','open')
+    vidname=cache.get('videoname')
 
     mypath=Get_Path(name,vidname)
      
@@ -2492,7 +2394,7 @@ def _dlhook(numblocks, blocksize, filesize, dt, start_time):
 
 def Download_Source(name,url):
     #get proper name of vid
-    vidname=handle_file('videoname','open')
+    vidname=cache.get('videoname')
     
     mypath=Get_Path(name,vidname)
            
@@ -3051,8 +2953,7 @@ def get_episode(season, episode, imdb_id, url, metaget, meta_installed, tmp_seas
             episode=CLEANUP(episode)
              
             #Get tvshow name - don't want the year portion
-            shownamepath=handle_file('mediatvshowname','')
-            showname=openfile(shownamepath)
+            showname=cache.get('mediatvshowname')
             r=re.search('(.+?) [(][0-9]{4}[)]',showname)
             if r:
                 showname = r.group(1)
