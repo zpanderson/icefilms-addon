@@ -38,11 +38,18 @@
 	<setting id="episodes-view" type="number" label="30404" default="504" enable="!eq(-4,false)"/>
 	<setting id="default-view" type="number" label="30405" default="50"/>
    </category>
+   <category label="Next-Aired">
+	<setting id="ReScan" type="action" label="45007" action="RunScript(C:\\Users\\Zach\\AppData\\Roaming\\XBMC\\addons\\plugin.video.icefilms\\resources\\script.tv.show.next.aired\\default.py,force=True)"/>
+	<setting type="lsep" label="45000" />
+	<setting id="ThumbType" type="enum" label="45001" default="0" values="Thumb|Banner|Logo" />
+	<setting id="BackgroundFanart" type="bool" label="45004" default="False" />
+	<setting id="PreviewThumbs" type="bool" label="45005" default="False" />
+   </category>
    <category label="Miscellaneous">
       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
       <setting id="watched-percent" label="30501" type="enum" values="50[B] %[/B]|60[B] %[/B]|70[B] %[/B]|80[B] %[/B]|90[B] %[/B]" default="3" />
       <setting id="play-action" type="enum" label="30502" values="Watch Stream|Download|Download and Watch" default="Watch Stream"/>
 	    <setting id="video-seeking" type="bool" label="30503" default="false"/>
 	    <setting id="buffer-delay" type="number" label="30504" default="10"/>
-   </category>   
+   </category>
 </settings>
