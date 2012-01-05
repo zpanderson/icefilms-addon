@@ -745,7 +745,7 @@ class MetaData:
             else:
                 sql_select = sql_select + " WHERE tmdb_id = '%s'" % tmdb_id
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, case when b.episode is null then 0 end as episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.imdb_id = '%s'" % imdb_id
+            sql_select = "SELECT a.*, CASE WHEN b.episode is null THEN 0 ELSE b.episode END AS episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.imdb_id = '%s'" % imdb_id
        
         print 'Looking up in local cache by id for: %s %s %s' % (type, imdb_id, tmdb_id)
         print 'SQL Select: %s' % sql_select        
@@ -781,7 +781,7 @@ class MetaData:
         if type == self.type_movie:
             sql_select = "SELECT * FROM movie_meta WHERE title = '%s'" % name
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, case when b.episode is null then 0 end as episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.title = '%s'" % name
+            sql_select = "SELECT a.*, CASE WHEN b.episode is null THEN 0 ELSE b.episode END AS episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.title = '%s'" % name
         
         name =  self._clean_string(name.lower())
         print 'Looking up in local cache by name for: %s %s %s' % (type, name, year)
