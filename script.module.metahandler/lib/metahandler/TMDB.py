@@ -199,7 +199,8 @@ class TMDB(object):
             if imdb_rating not in ('N/A', '', None):
                 meta['rating'] = imdb_rating
             else:
-                meta['rating'] = meta['tmdb_rating']
+                if meta.has_key('tmdb_rating'):
+                    meta['rating'] = meta['tmdb_rating']
                 
         if self._upd_key(meta, 'genre'):
             print '-- IMDB - Updating Genre'
