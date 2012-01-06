@@ -149,7 +149,7 @@ class Gui( xbmcgui.WindowXML ):
         else:
             self.setFocus( self.getControl( 200 + self.weekday ) )
 
-'''
+    '''
     def onClick(self, controlID):
         if controlID == 8:
             self.settingsOpen = True
@@ -158,7 +158,7 @@ class Gui( xbmcgui.WindowXML ):
             listitem = self.getControl( controlID ).getSelectedItem()
             library = listitem.getProperty('Library')
             xbmc.executebuiltin('ActivateWindow(Videos,' + library + ',return)')
-'''
+    '''
             
     def onFocus(self, controlID):
         pass

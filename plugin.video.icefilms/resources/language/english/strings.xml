@@ -35,6 +35,21 @@
     <string id="30603">        Use Posters instead of Banners for TV Shows</string>
     <string id="30604">    Movie Fanart</string>
     <string id="30605">    TV Fanart</string>
+	
+	<!-- Next Aired -->
+	<string id="450">TV Guide</string>
+	<string id="32101">TV Show - Next Aired</string>
+	<string id="32102">Getting information...</string>
+	<string id="32103">CANCELED</string>
+	<string id="32104">Operation canceled by user.</string>
+	<string id="45000">Display</string>
+	<string id="45001">Thumbnail type</string>
+	<string id="45002">Download banners (Artwork Downloader required)</string>
+	<string id="45003">Download logos (Artwork Downloader required)</string>
+	<string id="45004">Enable background fanart</string>
+	<string id="45005">Enable 16:9 preview thumbs</string>
+    <string id="45006">Download 16:9 preview thumbs (Artwork Downloader required)</string>
+    <string id="45007">Rescan tv guide data</string>
 
     <!-- Miscellaneous -->
     <string id="30500">Icefilms Site URL</string>
