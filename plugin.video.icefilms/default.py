@@ -2631,6 +2631,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
                  liz.setProperty('fanart_image', meta['backdrop_url'])
              contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
+             contextMenuItems.append(('Show Next Aired', 'RunScript(%s, force=false)' % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py')))
          elif mode == 13: # TV Season
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
