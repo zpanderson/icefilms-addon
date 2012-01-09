@@ -2,7 +2,7 @@
 <addons>
 <addon id="plugin.video.icefilms"
        name="Icefilms"
-       version="1.0.99.7"
+       version="1.0.99.8"
        provider-name="anarchintosh,daledude,eldorado">
     <requires>
         <import addon="xbmc.python" version="2.0"/>
@@ -36,7 +36,7 @@
 	</extension>
 </addon>
 
-<addon id="script.module.metahandler" name="metautils" version="0.0.6" provider-name="Eldorado (inspired by anarchintosh, westcoast, daledude, t0mm0)">
+<addon id="script.module.metahandler" name="metautils" version="0.0.7" provider-name="Eldorado (inspired by anarchintosh, westcoast, daledude, t0mm0)">
   <requires>
     <import addon="xbmc.python" version="2.0" />
     <import addon="script.module.elementtree"/>
@@ -48,7 +48,7 @@
   </extension>
 </addon>
 
-<addon id="script.module.t0mm0.common" name="t0mm0's common stuff" version="0.0.1" provider-name="t0mm0">
+<addon id="script.module.t0mm0.common" name="t0mm0's common stuff" version="0.0.2" provider-name="t0mm0">
   <requires>
     <import addon="xbmc.python" version="1.0" />
   </requires>

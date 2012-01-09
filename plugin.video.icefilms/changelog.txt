@@ -1,9 +1,19 @@
+v1.0.99.8 (Monday, 9 January 2012):
+  - Added TV Shows Next Aired
+  - Bug fix in IMDB ratings
+  - Added 'Votes' to Movie meta, # of votes used to create Rating
+  - Added 'Status' to TV Show meta - 'Continuing' - useful for Next Aired
+  - Bug fix in Stacked Parts
+  - Added # of Watched/Unwatched episodes based on DB stats
+  - Fixed Movies A-Z was showing A-Z list twice
+  - Added check and removal of previous Icefilms 1.0.x metadata
+  - Changed Download path - removed 'Icefilms Downloaded Videos' from path
+  
 v1.0.99.7 (Wednesday, 4 January 2012):
   - Metahandlers returning total # of episodes - episodes must be scraped for count to show
   - Metahandlers getting rating from IMDB, using TMDB as backup
   - Common cache integrated - removed need for IO on many text files
   - Update default auto-view for season to 504
-  - 
   
 v1.0.99.6 (Monday, 2 January 2012):
   - Fix for megaupload free user account changes
