@@ -8,6 +8,7 @@ v1.0.99.8 (Monday, 9 January 2012):
   - Fixed Movies A-Z was showing A-Z list twice
   - Added check and removal of previous Icefilms 1.0.x metadata
   - Changed Download path - removed 'Icefilms Downloaded Videos' from path
+  - Removed Library Mode switching from ContextMenu
   
 v1.0.99.7 (Wednesday, 4 January 2012):
   - Metahandlers returning total # of episodes - episodes must be scraped for count to show
