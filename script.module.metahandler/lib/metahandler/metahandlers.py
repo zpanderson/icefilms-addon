@@ -116,8 +116,65 @@ class MetaData:
         self.dbcon.row_factory = sqlite.Row # return results indexed by field names and not numbers so we can convert to dict
         self.dbcur = self.dbcon.cursor()
 
+        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
+        
+        if os.path.exists(self.videocache):
+            sql_select = 'SELECT votes FROM movie_meta'
+            sql_alter = 'ALTER TABLE movie_meta RENAME TO tmp_movie_meta'
+            try:
+                self.dbcur.execute(sql_select)
+                matchedrow = self.dbcur.fetchone()
+            except Exception:
+                print '************* movie votes column does not exist - creating temp table'
+                self.dbcur.execute(sql_alter)
+                self.dbcon.commit()
+
+            sql_select = 'SELECT status FROM tvshow_meta'
+            sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
+            try:
+                self.dbcur.execute(sql_select)
+                matchedrow = self.dbcur.fetchone()
+            except Exception:
+                print '************* movie votes column does not exist - creating temp table'
+                self.dbcur.execute(sql_alter)
+                self.dbcon.commit()
+        ## !!!!!!!!!!!!!!!!!!!!!!!
+
+
         # initialize cache db
         self._cache_create_movie_db()
+
+
+        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
+        sql_insert = "INSERT INTO movie_meta (imdb_id, tmdb_id, title, year, director, writer, tagline, cast, rating, votes, duration, plot, mpaa, premiered, genre, studio, thumb_url, cover_url, trailer_url, backdrop_url, imgs_prepacked, overlay) SELECT imdb_id, tmdb_id, title, year, director, writer, tagline, [cast], rating, '' as votes, duration, plot, mpaa, premiered, genre, studio, thumb_url, cover_url, trailer_url, backdrop_url, imgs_prepacked, overlay FROM tmp_movie_meta"
+        sql_select = 'SELECT imdb_id from tmp_movie_meta'
+        sql_drop = 'DROP TABLE tmp_movie_meta'
+        try:
+            self.dbcur.execute(sql_select)
+            matchedrow = self.dbcur.fetchone()
+            self.dbcur.execute(sql_insert)
+            self.dbcon.commit()
+            self.dbcur.execute(sql_drop)
+            self.dbcon.commit()
+        except Exception, e:
+            print '************* tmp_movie_meta does not exist: %s' % e
+
+
+        sql_insert = "INSERT INTO tvshow_meta (imdb_id, tvdb_id, title, cast, rating, duration, plot, mpaa, premiered, genre, studio, status, banner_url, cover_url, trailer_url, backdrop_url, imgs_prepacked, overlay) SELECT imdb_id, tvdb_id, title, [cast], rating, duration, plot, mpaa, premiered, genre, studio, '' as [status], banner_url, cover_url, trailer_url, backdrop_url, imgs_prepacked, overlay FROM tmp_tvshow_meta"
+        sql_select = 'SELECT imdb_id from tmp_tvshow_meta'
+        sql_drop = 'DROP TABLE tmp_tvshow_meta'
+        try:
+            self.dbcur.execute(sql_select)
+            matchedrow = self.dbcur.fetchone()
+            self.dbcur.execute(sql_insert)
+            self.dbcon.commit()
+            self.dbcur.execute(sql_drop)
+            self.dbcon.commit()
+        except Exception, e:
+            print '************* tmp_tvshow_meta does not exist: %s' % e
+
+        ## !!!!!!!!!!!!!!!!!!!!!!!
+
 
     def __del__(self):
         ''' Cleanup db when object destroyed '''
@@ -138,6 +195,7 @@ class MetaData:
                            "writer TEXT, "
                            "tagline TEXT, cast TEXT,"
                            "rating FLOAT, "
+                           "votes TEXT, "
                            "duration TEXT, "
                            "plot TEXT,"
                            "mpaa TEXT, "
@@ -169,6 +227,7 @@ class MetaData:
                            "premiered TEXT, "
                            "genre TEXT, "
                            "studio TEXT,"
+                           "status TEXT,"
                            "banner_url TEXT, "
                            "cover_url TEXT,"
                            "trailer_url TEXT, "
@@ -256,6 +315,7 @@ class MetaData:
         meta['trailer_url'] = ''
         meta['genre'] = ''
         meta['studio'] = ''
+        meta['status'] = ''        
         meta['cast'] = []
         meta['banner_url'] = ''
         
@@ -297,6 +357,7 @@ class MetaData:
         meta['tagline'] = ''
         meta['cast'] = []
         meta['rating'] = 0
+        meta['votes'] = ''
         meta['duration'] = ''
         meta['plot'] = ''
         meta['mpaa'] = ''
@@ -745,7 +806,7 @@ class MetaData:
             else:
                 sql_select = sql_select + " WHERE tmdb_id = '%s'" % tmdb_id
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, CASE WHEN b.episode is null THEN 0 ELSE b.episode END AS episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.imdb_id = '%s'" % imdb_id
+            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta WHERE imdb_id = '%s' GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta WHERE imdb_id = '%s' AND overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.imdb_id = '%s'" % (imdb_id, imdb_id, imdb_id)
        
         print 'Looking up in local cache by id for: %s %s %s' % (type, imdb_id, tmdb_id)
         print 'SQL Select: %s' % sql_select        
@@ -778,12 +839,13 @@ class MetaData:
         Returns:
             DICT of matched meta data or None if no match.
         '''        
+
+        name =  self._clean_string(name.lower())
         if type == self.type_movie:
             sql_select = "SELECT * FROM movie_meta WHERE title = '%s'" % name
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, CASE WHEN b.episode is null THEN 0 ELSE b.episode END AS episode FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id WHERE a.title = '%s'" % name
+            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta AND overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.title = '%s'" % name
         
-        name =  self._clean_string(name.lower())
         print 'Looking up in local cache by name for: %s %s %s' % (type, name, year)
         
         if year:
@@ -860,12 +922,12 @@ class MetaData:
         try:
             if type == self.type_movie:
                 self.dbcur.execute("INSERT INTO " + table + " VALUES "
-                                   "(:imdb_id, :tmdb_id, :title, :year, :director, :writer, :tagline, :cast, :rating, :duration, :plot, :mpaa, :premiered, :genre, :studio, :thumb_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
+                                   "(:imdb_id, :tmdb_id, :title, :year, :director, :writer, :tagline, :cast, :rating, :votes, :duration, :plot, :mpaa, :premiered, :genre, :studio, :thumb_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
                                    meta
                 )
             elif type == self.type_tvshow:
                 self.dbcur.execute("INSERT INTO " + table + " VALUES "
-                                   "(:imdb_id, :tvdb_id, :title, :cast, :rating, :duration, :plot, :mpaa, :premiered, :genre, :studio, :banner_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
+                                   "(:imdb_id, :tvdb_id, :title, :cast, :rating, :duration, :plot, :mpaa, :premiered, :genre, :studio, :status, :banner_url, :cover_url, :trailer_url, :backdrop_url, :imgs_prepacked, :overlay)",
                                    meta
                 )
             self.dbcon.commit()
@@ -963,6 +1025,7 @@ class MetaData:
         meta['title'] = md.get('name', name)      
         meta['tagline'] = md.get('tagline', '')
         meta['rating'] = float(md.get('rating', 0))
+        meta['votes'] = str(md.get('votes', ''))
         meta['duration'] = str(md.get('runtime', 0))
         meta['plot'] = md.get('overview', '')
         meta['mpaa'] = md.get('certification', '')       
@@ -1111,6 +1174,7 @@ class MetaData:
                     temp = temp[1:(len(temp)-1)]
                     meta['genre'] = temp
                 meta['studio'] = show.network
+                meta['status'] = show.status
                 if show.actors:
                     for actor in show.actors:
                         meta['cast'].append(actor)
