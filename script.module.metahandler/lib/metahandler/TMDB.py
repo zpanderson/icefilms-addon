@@ -108,7 +108,7 @@ class TMDB(object):
             return True 
         else:
             try:
-                bad_list = ['', '0.0', '0', 'None', '[]', 'No overview found.', 'TBD', 'N/A', None]
+                bad_list = ['', '0.0', '0', 0, 'None', '[]', 'No overview found.', 'TBD', 'N/A', None]
                 if meta[key] in bad_list:
                     return True
                 else:
@@ -192,7 +192,7 @@ class TMDB(object):
             temp=imdb_meta['Poster']
             if temp != 'N/A':
                 meta['cover_url']=temp
-                
+        
         if self._upd_key(meta, 'rating'):
             print '-- IMDB - Updating Rating'
             imdb_rating = imdb_meta['Rating']
@@ -201,6 +201,11 @@ class TMDB(object):
             else:
                 if meta.has_key('tmdb_rating'):
                     meta['rating'] = meta['tmdb_rating']
+
+        if not self._upd_key(imdb_meta, 'Votes'):
+            meta['votes'] = imdb_meta['Votes']
+        else:
+            meta['votes'] = ''
                 
         if self._upd_key(meta, 'genre'):
             print '-- IMDB - Updating Genre'
@@ -225,7 +230,7 @@ class TMDB(object):
                         dur = dur + int(scrape[0])
                 meta['runtime']=str(dur)
         
-        meta['imdb_id'] = imdb_meta['ID']
+        meta['imdb_id'] = imdb_meta['ID']       
         return meta
 
 
