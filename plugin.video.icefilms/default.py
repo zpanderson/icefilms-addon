@@ -202,9 +202,9 @@ def DLDirStartup():
 
      if downloadPath:
         if os.path.exists(downloadPath):
-          initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
-          tvpath=os.path.join(initial_path,'TV Shows')
-          moviepath=os.path.join(initial_path,'Movies')
+          #initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
+          tvpath=os.path.join(downloadPath,'TV Shows')
+          moviepath=os.path.join(downloadPath,'Movies')
 
           tv_path_exists=os.path.exists(tvpath)
           movie_path_exists=os.path.exists(moviepath)
@@ -278,6 +278,17 @@ def LoginStartup():
                                 
 def ContainerStartup():
 
+     #Check for previous Icefilms metadata install and delete
+     meta_folder = os.path.join(translatedicedatapath, 'meta_caches')
+     if os.path.exists(meta_folder):
+         import shutil
+         try:
+             print 'Removing previous Icefilms meta folder: %s' % meta_folder
+             shutil.rmtree(meta_folder)
+         except Exception, e:
+             print 'Failed to delete Icefilms meta folder: %s' % e
+             pass
+
      #Initialize MetaHandler and MetaContainer classes
      #MetaContainer will clean up from previous installs, so good idea to always initialize at addon startup
      from metahandler import metacontainers
@@ -287,12 +298,6 @@ def ContainerStartup():
      #Check meta cache DB if meta pack has been installed     
      meta_installed = mh.check_meta_installed(addon_id)
      
-     movie_fanart = selfAddon.getSetting('movie-fanart')
-     movie_covers = selfAddon.getSetting('movie-covers')
-     tv_covers = selfAddon.getSetting('tv-covers')
-     tv_posters = selfAddon.getSetting('tv-posters')
-     tv_fanart = selfAddon.getSetting('tv-fanart')
-
      #get containers dict from container_urls.py
      containers = container_urls.get()  
 
@@ -325,6 +330,13 @@ def ContainerStartup():
      #Only check/prompt for image pack downloads if the DB has been downloaded/installed
      if meta_installed:
 
+         #Get metadata settings
+         movie_fanart = selfAddon.getSetting('movie-fanart')
+         movie_covers = selfAddon.getSetting('movie-covers')
+         tv_covers = selfAddon.getSetting('tv-covers')
+         tv_posters = selfAddon.getSetting('tv-posters')
+         tv_fanart = selfAddon.getSetting('tv-fanart')
+     
          #TV Covers/Banners
          if tv_covers =='true':
              if tv_posters == 'true':
@@ -1086,8 +1098,6 @@ def MOVIEA2ZDirectories(url):
         
         #Generate A-Z list and add directories for all letters.
         A2Z=[chr(i) for i in xrange(ord('A'), ord('Z')+1)]
-        for theletter in A2Z:
-             addDir (theletter,caturl+theletter,setmode,os.path.join(art,'letters',theletter+'.png'))
 
         #Add number directory
         addDir ('#1234',caturl+'1',setmode,os.path.join(art,'letters','1.png'))
@@ -1468,17 +1478,6 @@ def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
         if r5r6 == 1:
                 addDir('R5/R6 DVDRip',url,104,os.path.join(art,'source_types','r5r6.png'), imdb=imdbnum)
 
-def Add_Multi_Parts(name,url,icon,sourcenumber):
-     StackMulti = selfAddon.getSetting('stack-multi-part')
-
-     if StackMulti=='true':
-
-             name = name.replace('Part 1', 'Multiple Parts')
-             addExecute(name,url,199,icon)
-
-     else:
-         addExecute(name,url,get_default_action(),icon)
-
 
 def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
      #check if source exists
@@ -1516,8 +1515,11 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
                                   print 'sources havent been set yet...'  
                               sources[partnum] = url                          
                               cache.set("source"+str(sourcenumber)+"parts", repr(sources))
-                              if partnum == '1':
-                                  Add_Multi_Parts(fullname,url,megapic,sourcenumber)
+                              if selfAddon.getSetting('stack-multi-part') == 'true' and partnum == '1':
+                                  name = fullname.replace('Part 1', 'Multiple Parts')
+                                  addExecute(name,url,199,megapic)
+                              elif selfAddon.getSetting('stack-multi-part') == 'false':
+                                  addExecute(fullname,url,get_default_action(),megapic)
                         elif is2shared is not None:
                              #print sourcestring+' is hosted by 2shared' 
                              part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
@@ -1525,7 +1527,7 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
                                   fullurl='http://www.2shared.com/'+url
                                   partname='Part '+name
                                   fullname=sourcestring+' | 2S  | '+partname
-                                  Add_Multi_Parts(fullname,url,shared2pic)
+                                  addExecute(fullname,url,get_default_action(),shared2pic)
 
           # if source does not have multiple parts...
           elif multiple_part is None:
@@ -1779,14 +1781,14 @@ def Get_Path(srcname,vidname):
                #add file extension
                vidname = vidname+'.avi'
 
-          initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
+          #initial_path=os.path.join(downloadPath,'Icefilms Downloaded Videos')
 
           #is use special directory structure set to true?
           SpecialDirs=selfAddon.getSetting('use-special-structure')
 
           if SpecialDirs == 'true':
                mediapath=Clean_Windows_String(os.path.normpath(cache.get('mediapath')))
-               mediapath=os.path.join(initial_path,mediapath)              
+               mediapath=os.path.join(downloadPath,mediapath)              
                
                if not os.path.exists(mediapath):
                     try:
@@ -1799,7 +1801,7 @@ def Get_Path(srcname,vidname):
                return finalpath
      
           elif SpecialDirs == 'false':
-               mypath=os.path.join(initial_path,vidname)
+               mypath=os.path.join(downloadPath,vidname)
                return mypath
      else:
           return 'path not set'
@@ -2627,6 +2629,9 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          # mark as watched or unwatched 
          addWatched = False
          if mode == 12: # TV series
+             episodes_watched = str(int(meta['episode']) - int(meta['unwatched']))
+             liz.setProperty('WatchedEpisodes', episodes_watched)
+             liz.setProperty('UnWatchedEpisodes', meta['unwatched'])
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
                  liz.setProperty('fanart_image', meta['backdrop_url'])
@@ -2684,13 +2689,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
                      sysimdb = urllib.quote_plus('nothing')
                  #if searchMode==False:
                  contextMenuItems.append(('Add to Ice Favourites', 'XBMC.RunPlugin(%s?mode=110&name=%s&url=%s&imdbnum=%s)' % (sys.argv[0], sysname, sysurl, sysimdb)))
-     
-     # switch on/off library mode (have it appear in list after favourite options)
-     if inLibraryMode():
-         contextMenuItems.append(('Switch off Library mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
-     else:
-         contextMenuItems.append(('Switch to Library Mode', 'XBMC.RunPlugin(%s?mode=300)' % (sys.argv[0])))
-                     
+                        
      if contextMenuItems:
          liz.addContextMenuItems(contextMenuItems, replaceItems=True)
 
@@ -2720,20 +2719,6 @@ def VaddDir(name,url,mode,iconimage):
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
         return ok
 
-# switch in and out of library mode
-def toggleLibraryMode():
-    container_folder_path = xbmc.getInfoLabel('Container.FolderPath')
-    if inLibraryMode():
-        xbmc.executebuiltin("XBMC.ActivateWindow(VideoFiles,%s)" % container_folder_path)
-        # do not cacheToDisc cuz we want this code rerun
-        xbmcplugin.endOfDirectory( int(sys.argv[1]), succeeded=True, updateListing=False, cacheToDisc=False )
-    else:
-        xbmc.executebuiltin("XBMC.ActivateWindow(VideoLibrary,%s)" % container_folder_path)
-        # do not cacheToDisc cuz we want this code rerun
-        xbmcplugin.endOfDirectory( int(sys.argv[1]), succeeded=True, updateListing=False, cacheToDisc=False )
-
-def inLibraryMode():
-    return xbmc.getCondVisibility("[Window.IsActive(videolibrary)]")
 
 def setView(content, viewType):
     
@@ -3424,10 +3409,7 @@ elif mode==207:
 
 elif mode==208:
         CancelDownload(name)        
-  
-elif mode==300:
-        toggleLibraryMode()
-        
+         
 elif mode==666:
         create_meta_pack()
 
