@@ -42,5 +42,11 @@
     <string id="30502">Default Play Action</string>
     <string id="30503">Enable Video Seeking - Fast Forward & Rewind</string>
     <string id="30504">Buffer Delay (seconds)</string>
+
+   <!-- Next Aired -->
+   <string id="45000">Rescan tv guide data</string>    
+   <string id="45001">Display</string>
+   <string id="45002">Enable background fanart</string>
+   <string id="45003">Enable 16:9 preview thumbs</string>
 >>>>>>> stable
 </strings>

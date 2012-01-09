@@ -39,11 +39,10 @@
 	<setting id="default-view" type="number" label="30405" default="50"/>
    </category>
    <category label="Next-Aired">
-	<setting id="ReScan" type="action" label="45007" action="RunScript(C:\\Users\\Zach\\AppData\\Roaming\\XBMC\\addons\\plugin.video.icefilms\\resources\\script.tv.show.next.aired\\default.py,force=True)"/>
-	<setting type="lsep" label="45000" />
-	<setting id="ThumbType" type="enum" label="45001" default="0" values="Thumb|Banner|Logo" />
-	<setting id="BackgroundFanart" type="bool" label="45004" default="False" />
-	<setting id="PreviewThumbs" type="bool" label="45005" default="False" />
+	<setting id="ReScan" type="action" label="45000" action="RunScript(special://home/addons/plugin.video.icefilms/resources/script.tv.show.next.aired/default.py,force=true)"/>
+	<setting type="lsep" label="45001" />
+	<setting id="BackgroundFanart" type="bool" label="45002" default="False" />
+	<setting id="PreviewThumbs" type="bool" label="45003" default="False" />
    </category>
    <category label="Miscellaneous">
       <setting id="icefilms-url" type="text" label="30500" default="http://www.icefilms.info/" />
