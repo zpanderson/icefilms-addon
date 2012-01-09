@@ -149,7 +149,7 @@ class Gui( xbmcgui.WindowXML ):
         else:
             self.setFocus( self.getControl( 200 + self.weekday ) )
 
-'''
+    '''
     def onClick(self, controlID):
         if controlID == 8:
             self.settingsOpen = True
@@ -158,7 +158,7 @@ class Gui( xbmcgui.WindowXML ):
             listitem = self.getControl( controlID ).getSelectedItem()
             library = listitem.getProperty('Library')
             xbmc.executebuiltin('ActivateWindow(Videos,' + library + ',return)')
-'''
+    '''
             
     def onFocus(self, controlID):
         pass
@@ -189,9 +189,9 @@ class NextAired:
         self.days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
         self.ampm = xbmc.getCondVisibility('substring(System.Time,Am)') or xbmc.getCondVisibility('substring(System.Time,Pm)')
         self._parse_argv()
-        if __settings__.getSetting( "AddonVersion" ) != __version__:
-            __settings__.setSetting ( id = "AddonVersion", value = "%s" % __version__ )
-            self.FORCEUPDATE = True
+        #if __settings__.getSetting( "AddonVersion" ) != __version__:
+        #    __settings__.setSetting ( id = "AddonVersion", value = "%s" % __version__ )
+        #    self.FORCEUPDATE = True
         if self.BACKEND:
             self.run_backend()
         else:
