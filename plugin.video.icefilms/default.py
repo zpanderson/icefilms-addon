@@ -1468,18 +1468,6 @@ def addCatDir(url,dvdrip,hd720p,dvdscreener,r5r6):
         if r5r6 == 1:
                 addDir('R5/R6 DVDRip',url,104,os.path.join(art,'source_types','r5r6.png'), imdb=imdbnum)
 
-def Add_Multi_Parts(name,url,icon,sourcenumber):
-     StackMulti = selfAddon.getSetting('stack-multi-part')
-
-     if StackMulti=='true':
-
-             name = name.replace('Part 1', 'Multiple Parts')
-             addExecute(name,url,199,icon)
-
-     else:
-         addExecute(name,url,get_default_action(),icon)
-
-
 def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
      #check if source exists
      sourcestring='Source #'+sourcenumber
@@ -1516,8 +1504,11 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
                                   print 'sources havent been set yet...'  
                               sources[partnum] = url                          
                               cache.set("source"+str(sourcenumber)+"parts", repr(sources))
-                              if partnum == '1':
-                                  Add_Multi_Parts(fullname,url,megapic,sourcenumber)
+                              if selfAddon.getSetting('stack-multi-part') == 'true' and partnum == '1':
+                                  name = fullname.replace('Part 1', 'Multiple Parts')
+                                  addExecute(name,url,199,megapic)
+                              elif selfAddon.getSetting('stack-multi-part') == 'false':
+                                  addExecute(fullname,url,get_default_action(),megapic)
                         elif is2shared is not None:
                              #print sourcestring+' is hosted by 2shared' 
                              part=re.compile('&url=http://www.2shared.com/(.+?)>PART (.+?)</a>').findall(scrape)
@@ -1525,7 +1516,7 @@ def PART(scrap,sourcenumber,args,cookie,megapic,shared2pic):
                                   fullurl='http://www.2shared.com/'+url
                                   partname='Part '+name
                                   fullname=sourcestring+' | 2S  | '+partname
-                                  Add_Multi_Parts(fullname,url,shared2pic)
+                                  addExecute(fullname,url,get_default_action(),shared2pic)
 
           # if source does not have multiple parts...
           elif multiple_part is None:
