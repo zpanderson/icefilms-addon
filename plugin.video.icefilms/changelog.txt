@@ -1,3 +1,8 @@
+v1.0.99.9 (Tuesday, 10 January 2012):
+  - Updated container url for new DB - new fields added in previous release
+  - Metahandlers updated to properly upgrade existing DB's - was throwing an error
+  - SQL syntax error in Metahandlers when looking up in cache DB by title
+  
 v1.0.99.8 (Monday, 9 January 2012):
   - Added TV Shows Next Aired
   - Bug fix in IMDB ratings
