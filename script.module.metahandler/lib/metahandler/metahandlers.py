@@ -116,28 +116,36 @@ class MetaData:
         self.dbcon.row_factory = sqlite.Row # return results indexed by field names and not numbers so we can convert to dict
         self.dbcur = self.dbcon.cursor()
 
-        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!
-        
+        # !!!!!!!! TEMPORARY CODE !!!!!!!!!!!!!!!      
         if os.path.exists(self.videocache):
-            sql_select = 'SELECT votes FROM movie_meta'
-            sql_alter = 'ALTER TABLE movie_meta RENAME TO tmp_movie_meta'
+            table_exists = True
             try:
+                sql_select = 'select * from movie_meta'
                 self.dbcur.execute(sql_select)
                 matchedrow = self.dbcur.fetchone()
-            except Exception:
-                print '************* movie votes column does not exist - creating temp table'
-                self.dbcur.execute(sql_alter)
-                self.dbcon.commit()
+            except:
+                table_exists = False
 
-            sql_select = 'SELECT status FROM tvshow_meta'
-            sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
-            try:
-                self.dbcur.execute(sql_select)
-                matchedrow = self.dbcur.fetchone()
-            except Exception:
-                print '************* movie votes column does not exist - creating temp table'
-                self.dbcur.execute(sql_alter)
-                self.dbcon.commit()
+            if table_exists:
+                sql_select = 'SELECT votes FROM movie_meta'
+                sql_alter = 'ALTER TABLE movie_meta RENAME TO tmp_movie_meta'
+                try:
+                    self.dbcur.execute(sql_select)
+                    matchedrow = self.dbcur.fetchone()
+                except Exception:
+                    print '************* movie votes column does not exist - creating temp table'
+                    self.dbcur.execute(sql_alter)
+                    self.dbcon.commit()
+    
+                sql_select = 'SELECT status FROM tvshow_meta'
+                sql_alter = 'ALTER TABLE tvshow_meta RENAME TO tmp_tvshow_meta'
+                try:
+                    self.dbcur.execute(sql_select)
+                    matchedrow = self.dbcur.fetchone()
+                except Exception:
+                    print '************* movie votes column does not exist - creating temp table'
+                    self.dbcur.execute(sql_alter)
+                    self.dbcon.commit()
         ## !!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -844,7 +852,7 @@ class MetaData:
         if type == self.type_movie:
             sql_select = "SELECT * FROM movie_meta WHERE title = '%s'" % name
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta AND overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.title = '%s'" % name
+            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta WHERE overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.title = '%s'" % name
         
         print 'Looking up in local cache by name for: %s %s %s' % (type, name, year)
         
