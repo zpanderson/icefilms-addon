@@ -333,6 +333,8 @@ class MetaData:
         meta['cover_url'] = ''
         meta['backdrop_url'] = ''
         meta['overlay'] = 6
+        meta['episode'] = '0'
+        meta['unwatched'] = '0'
         return meta
 
 
@@ -1448,7 +1450,55 @@ class MetaData:
         else:
             return None
 
-    
+
+    def update_episode_meta(self, name, imdb_id, season, episode, tvdb_id='', new_imdb_id='', new_tvdb_id=''):
+        '''
+        Updates and returns meta data for given episode, 
+        mainly to be used with refreshing individual tv show episodes.
+        
+        Searches local cache DB for record, delete if found, calls get_episode_meta() to grab new data
+               
+        
+        Args:
+            name (int): full name of movie you are searching
+            imdb_id (str): IMDB ID
+            season (int): season number
+            episode (int): episode number
+        Kwargs:
+            tvdb_id (str): TVDB ID
+                        
+        Returns:
+            DICT of meta data or None if cannot be found.
+        '''
+        print '---------------------------------------------------------------------------------------'
+        print 'Updating episode meta data: %s IMDB: %s SEASON: %s EPISODE: %s TVDB ID: %s NEW IMDB ID: %s NEW TVDB ID: %s' % (name, imdb_id, season, episode, tvdb_id, new_imdb_id, new_tvdb_id)
+
+      
+        if imdb_id:
+            imdb_id = self._valid_imdb_id(imdb_id)
+        else:
+            imdb_id = ''
+
+        #Find tvdb_id for the TVshow
+        tvdb_id = self._get_tvdb_id(name, imdb_id)
+        
+        #Lookup in cache table for existing entry
+        meta = self._cache_lookup_episode(imdb_id, tvdb_id, season, episode)
+        
+        #We found an entry in the DB, so lets delete it
+        if meta:
+            self._cache_delete_episode_meta(imdb_id, tvdb_id, name, season, episode)
+        else:
+            print 'No match found in cache db'
+        
+        if not new_imdb_id:
+            new_imdb_id = imdb_id
+        elif not new_tvdb_id:
+            new_tvdb_id = tvdb_id
+            
+        return self.get_episode_meta(name, imdb_id, season, episode)
+
+
     def _cache_lookup_episode(self, imdb_id, tvdb_id, season, episode):
         '''
         Lookup in local cache db for episode data
@@ -1497,7 +1547,31 @@ class MetaData:
             return dict(matchedrow)
         else:
             return None
+
+
+    def _cache_delete_episode_meta(self, imdb_id, tvdb_id, name, season, episode):
+        '''
+        Delete meta data from SQL table
         
+        Args:
+            imdb_id (str): IMDB ID
+            tvdb_id (str): TVDB ID
+            name (str): Episode title
+            season (int): Season #
+            episode(int): Episode #
+        '''
+
+        if imdb_id:
+            sql_delete = "DELETE FROM episode_meta WHERE imdb_id = '%s' AND tvdb_id = '%s' and season = %s and episode = %s" % (imdb_id, tvdb_id, season, episode)
+
+        print 'Deleting table entry: IMDB: %s TVDB: %s Title: %s Season: %s Episode: %s ' % (imdb_id, tvdb_id, name, season, episode)
+        print 'SQL DELETE: %s' % sql_delete               
+        try:
+            self.dbcur.execute(sql_delete)
+        except Exception, e:
+            print '************* Error attempting to delete from episode cache table: %s ' % e          
+            pass
+
 
     def _get_tvdb_episode_data(self, tvdb_id, season, episode, dateSearch=False):
         '''
