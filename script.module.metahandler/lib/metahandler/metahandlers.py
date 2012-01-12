@@ -334,7 +334,7 @@ class MetaData:
         meta['backdrop_url'] = ''
         meta['overlay'] = 6
         meta['episode'] = '0'
-        meta['unwatched'] = '0'
+        meta['playcount'] = 0
         return meta
 
 
@@ -652,7 +652,7 @@ class MetaData:
             return
                     
 
-    def get_meta(self, type, name, imdb_id='', tmdb_id='', year=''):
+    def get_meta(self, type, name, imdb_id='', tmdb_id='', year='', overlay=''):
         '''
         Main method to get meta data for movie or tvshow. Will lookup by name/year 
         if no IMDB ID supplied.       
@@ -665,6 +665,7 @@ class MetaData:
             tmdb_id (str): TMDB ID
             year (str): 4 digit year of video, recommended to include the year whenever possible
                         to maximize correct search results.
+            overlay (int): To set the default watched status (6=unwatched, 7=watched) on new videos
                         
         Returns:
             DICT of meta data or None if cannot be found.
@@ -690,7 +691,7 @@ class MetaData:
             elif type==self.type_tvshow:
                 meta = self._get_tvdb_meta(imdb_id, name, year)
                        
-            self._cache_save_video_meta(meta, name, type)
+            self._cache_save_video_meta(meta, name, type, overlay)
 
         #We want to send back the name that was passed in   
         meta['title'] = name
@@ -784,8 +785,10 @@ class MetaData:
             meta = self._cache_lookup_by_name(type, name, year)
         
         if meta:
+            overlay = meta['overlay']
             self._cache_delete_video_meta(type, imdb_id, tmdb_id, name, year)
         else:
+            overlay = 6
             print 'No match found in cache db'
         
         if not new_imdb_id:
@@ -793,7 +796,7 @@ class MetaData:
         elif not new_tmdb_id:
             new_tmdb_id = tmdb_id
             
-        return self.get_meta(type, name, new_imdb_id, new_tmdb_id, year)
+        return self.get_meta(type, name, new_imdb_id, new_tmdb_id, year, overlay)
         
 
     def _cache_lookup_by_id(self, type, imdb_id='', tmdb_id=''):
@@ -816,7 +819,7 @@ class MetaData:
             else:
                 sql_select = sql_select + " WHERE tmdb_id = '%s'" % tmdb_id
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta WHERE imdb_id = '%s' GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta WHERE imdb_id = '%s' AND overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.imdb_id = '%s'" % (imdb_id, imdb_id, imdb_id)
+            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.playcount ISNULL THEN 0 ELSE c.playcount END as playcount FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(imdb_id) AS episode FROM episode_meta WHERE imdb_id = '%s' GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(imdb_id) AS playcount FROM episode_meta WHERE imdb_id = '%s' AND overlay=7 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.imdb_id = '%s'" % (imdb_id, imdb_id, imdb_id)
        
         print 'Looking up in local cache by id for: %s %s %s' % (type, imdb_id, tmdb_id)
         print 'SQL Select: %s' % sql_select        
@@ -854,7 +857,7 @@ class MetaData:
         if type == self.type_movie:
             sql_select = "SELECT * FROM movie_meta WHERE title = '%s'" % name
         elif type == self.type_tvshow:
-            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.unwatched ISNULL THEN '0' ELSE CAST(c.unwatched AS varchar(4)) END as unwatched FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(*) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(*) AS unwatched FROM episode_meta WHERE overlay=6 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.title = '%s'" % name
+            sql_select = "SELECT a.*, CASE WHEN b.episode ISNULL THEN 0 ELSE b.episode END AS episode, CASE WHEN c.playcount ISNULL THEN 0 ELSE c.playcount END as playcount FROM tvshow_meta a LEFT JOIN (SELECT imdb_id, count(imdb_id) AS episode FROM episode_meta GROUP BY imdb_id) b ON a.imdb_id = b.imdb_id LEFT JOIN (SELECT imdb_id, count(imdb_id) AS playcount FROM episode_meta WHERE overlay=7 GROUP BY imdb_id) c ON a.imdb_id = c.imdb_id WHERE a.title = '%s'" % name
         
         print 'Looking up in local cache by name for: %s %s %s' % (type, name, year)
         
@@ -877,14 +880,15 @@ class MetaData:
             return None
                        
 
-    def _cache_save_video_meta(self, meta, name, type):
+    def _cache_save_video_meta(self, meta, name, type, overlay=''):
         '''
         Saves meta data to SQL table given type
         
         Args:
             meta (dict): meta data of video to be added to database
             type (str): 'movie' or 'tvshow'
-                        
+        Kwargs:
+            overlay (int): To set the default watched status (6=unwatched, 7=watched) on new videos                        
         '''            
         if type == self.type_movie:
             table='movie_meta'
@@ -893,7 +897,7 @@ class MetaData:
         
         #strip title
         meta['title'] =  self._clean_string(name.lower())
-        
+               
         #Select on either IMDB ID or name + premiered
         if meta['imdb_id']:
             sql_select = "SELECT * FROM %s WHERE imdb_id = '%s'" % (table, meta['imdb_id'])
@@ -927,6 +931,10 @@ class MetaData:
         
         if meta.has_key('cast'):
             meta['cast'] = str(meta['cast'])
+
+        #set default overlay if available
+        if overlay:
+            meta['overlay'] = int(overlay)
         
         print 'Saving cache information: ', meta         
         try:
@@ -1256,7 +1264,7 @@ class MetaData:
         return movie_list
 
             
-    def get_episode_meta(self, name, imdb_id, season, episode):
+    def get_episode_meta(self, name, imdb_id, season, episode, overlay=''):
         '''
         Requests meta data from TVDB for TV episodes, searches local cache db first.
         
@@ -1265,6 +1273,8 @@ class MetaData:
             imdb_id (str): IMDB ID
             season (int): tv show season number, number only no other characters
             episode (int): tv show episode number, number only no other characters
+        Kwargs:
+            overlay (int): To set the default watched status (6=unwatched, 7=watched) on new videos
                         
         Returns:
             DICT. It must also return an empty dict when
@@ -1311,6 +1321,10 @@ class MetaData:
                 meta['overlay'] = self._get_watched_episode(meta)
                 meta['backdrop_url'] = ''
                 
+                #set overlay if used
+                if overlay:
+                    meta['overlay'] = int(overlay)
+                    
                 self._cache_save_episode_meta(meta)
                 
                 return meta
@@ -1355,9 +1369,16 @@ class MetaData:
             meta['trailer_url']=''
             meta['premiered']=meta['premiered']
             meta = self._get_tv_extra(meta)
-            meta['overlay'] = self._get_watched_episode(meta)          
+            
+            #set overlay if used
+            if overlay:
+                meta['overlay'] = int(overlay)
+            else:
+                meta['overlay'] = self._get_watched_episode(meta)     
+                 
             self._cache_save_episode_meta(meta)
-            meta['backdrop_url'] = self._get_tvshow_backdrops(imdb_id, tvdb_id)            
+            
+            meta['backdrop_url'] = self._get_tvshow_backdrops(imdb_id, tvdb_id)
         
         else:
             print 'Episode found on db, meta='+str(meta)
@@ -1487,16 +1508,18 @@ class MetaData:
         
         #We found an entry in the DB, so lets delete it
         if meta:
+            overlay = meta['overlay']
             self._cache_delete_episode_meta(imdb_id, tvdb_id, name, season, episode)
         else:
+            overlay = 6
             print 'No match found in cache db'
-        
+       
         if not new_imdb_id:
             new_imdb_id = imdb_id
         elif not new_tvdb_id:
             new_tvdb_id = tvdb_id
             
-        return self.get_episode_meta(name, imdb_id, season, episode)
+        return self.get_episode_meta(name, imdb_id, season, episode, overlay)
 
 
     def _cache_lookup_episode(self, imdb_id, tvdb_id, season, episode):
