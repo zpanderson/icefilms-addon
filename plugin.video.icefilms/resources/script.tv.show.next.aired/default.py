@@ -1,4 +1,4 @@
-from time import strptime, mktime
+from time import strptime, mktime, time
 import os, sys, re, socket, urllib, unicodedata, simplejson
 from traceback import print_exc
 from datetime import datetime, date, timedelta, tzinfo
@@ -82,8 +82,9 @@ class Gui( xbmcgui.WindowXML ):
         self.setLabels = kwargs['setLabels']
 
     def onInit(self):
-        num = int( __addon__.getSetting( "ThumbType" ) )
-        xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,%i,Home)" % num )
+        xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,0,Home)" )
+        #num = int( __addon__.getSetting( "ThumbType" ) )
+        #xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,%i,Home)" % num )
         if __addon__.getSetting( "PreviewThumbs" ) == 'true':
             xbmc.executebuiltin( "SetProperty(TVGuide.PreviewThumbs,1,Home)" )
         else:
@@ -167,8 +168,9 @@ class Gui( xbmcgui.WindowXML ):
         if action in ( 9, 10, 92, 216, 247, 257, 275, 61467, 61448, ):
             self.close()
         if action in ( 7, 10, 92, ) and self.settingsOpen:
-            num = int( __addon__.getSetting( "ThumbType" ) )
-            xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,%i,Home)" % num )
+            xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,0,Home)" )
+            #num = int( __addon__.getSetting( "ThumbType" ) )
+            #xbmc.executebuiltin( "SetProperty(TVGuide.ThumbType,%i,Home)" % num )
             if __addon__.getSetting( "PreviewThumbs" ) == 'true':
                 xbmc.executebuiltin( "SetProperty(TVGuide.PreviewThumbs,1,Home)" )
             else:
