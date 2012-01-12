@@ -1,3 +1,10 @@
+v1.0.99.10 (Thursday, 12 January 2012):
+  - Modified wait time increment to round up to no decimals and convert to integer - float caused bug in Ubuntu
+  - Added Episode 'Refresh Info'
+  - Bug fix in Next Aired
+  - Next Aired only showing for Favorites
+  - Watched/Unwatched count now properly shows in TV Show Info dialog
+
 v1.0.99.9 (Tuesday, 10 January 2012):
   - Updated container url for new DB - new fields added in previous release
   - Metahandlers updated to properly upgrade existing DB's - was throwing an error
