@@ -597,16 +597,16 @@ def addFavourites(enablemetadata,directory,dircontents,contentType):
                     
                     if meta is None:
                         #add all the items without meta
-                        addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
+                        addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist), favourite=True)
                     else:
                         #add directories with meta
-                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), meta_install=meta_installed)
+                        addDir(info[0],info[1],info[2],'',meta=meta,delfromfav=True,imdb=info[3], totalItems=len(stringlist), meta_install=meta_installed, favourite=True)
                 else:
                     #add all the items without meta
-                    addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
+                    addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist), favourite=True)
             else:
                 #add all the items without meta
-                addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist))
+                addDir(info[0],info[1],info[2],'',delfromfav=True, totalItems=len(stringlist), favourite=True)
 
 
 def FAVOURITES(url):
@@ -1656,7 +1656,7 @@ def HD720p(url):
         setView(None, 'default-view')
 
 def DVDScreener(url):
-        llink=cache.get('mirror')
+        link=cache.get('mirror')
 #string for all text under dvd screener border
         defcat=re.compile('<div class=ripdiv><b>DVD Screener</b>(.+?)</div>').findall(link)
         for scrape in defcat:
@@ -1883,7 +1883,7 @@ def handle_wait(time_to_wait,title,text):
     secs=0
     percent=0
     increment = float(100) / time_to_wait
-    increment = round(increment, 2)
+    increment = int(round(increment))
 
     cancelled = False
     while secs < time_to_wait:
@@ -1891,7 +1891,7 @@ def handle_wait(time_to_wait,title,text):
         percent = increment*secs
         secs_left = str((time_to_wait - secs))
         remaining_display = ' Wait '+secs_left+' seconds for the video stream to activate...'
-        pDialog.update(percent,' '+text,remaining_display)
+        pDialog.update(percent,' '+ text, remaining_display)
         xbmc.sleep(1000)
         if (pDialog.iscanceled()):
              cancelled = True
@@ -2557,7 +2557,7 @@ def addExecute(name,url,mode,iconimage):
     return ok
 
 
-def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, meta_install=False):
+def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False, disablefav=False, searchMode=False, totalItems=0, disablewatch=False, meta_install=False, favourite=False):
      ###  addDir with context menus and meta support  ###
 
      #encode url and name, so they can pass through the sys.argv[0] related strings
@@ -2629,20 +2629,21 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          # mark as watched or unwatched 
          addWatched = False
          if mode == 12: # TV series
-             episodes_watched = str(int(meta['episode']) - int(meta['unwatched']))
-             liz.setProperty('WatchedEpisodes', episodes_watched)
-             liz.setProperty('UnWatchedEpisodes', meta['unwatched'])
+             if int(meta['episode']) > 0:
+                 episodes_unwatched = str(int(meta['episode']) - meta['playcount'])
+                 liz.setProperty('UnWatchedEpisodes', episodes_unwatched)
+                 liz.setProperty('WatchedEpisodes', str(meta['playcount']))
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
                  liz.setProperty('fanart_image', meta['backdrop_url'])
              contextMenuItems.append(('Show Information', 'XBMC.Action(Info)'))
-             contextMenuItems.append(('Show Next Aired', 'RunScript(%s, force=false)' % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py')))
+             if favourite:
+                 contextMenuItems.append(('Show Next Aired', 'RunScript(%s)' % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py')))
          elif mode == 13: # TV Season
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
                  liz.setProperty('fanart_image', meta['backdrop_url'])
              season = meta['season']             
-             contextMenuItems.append(('Season Information', 'XBMC.Action(Info)'))                 
          elif mode == 14: # TV Episode
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
@@ -2650,6 +2651,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              season = meta['season']
              episode = meta['episode']
              contextMenuItems.append(('Episode Information', 'XBMC.Action(Info)'))
+             contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s&season=%s&episode=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType, season, episode)))             
          elif mode == 100: # movies
              addWatched = True
              if movie_fanart == 'true' and movie_fanart_installed == 'true':
@@ -2661,7 +2663,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              if mode in (12, 100):
                  contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=999&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType)))
                  contextMenuItems.append(('Search for trailer', 
-                                          'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
+                                          'XBMC.RunPlugin(%s?mode=997&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
                                           % (sys.argv[0], sysname, sysurl, dirmode, urllib.quote_plus(str(imdb))) ))                        
                      
          #Add Watch/Unwatch context menu             
@@ -2908,6 +2910,22 @@ def REFRESH(videoType, url,imdb_id,name,dirmode):
                     year = ''
                 metaget.update_meta(videoType, name, imdb_id, year=year)
                 xbmc.executebuiltin("XBMC.Container.Refresh")           
+
+
+def episode_refresh(url, imdb_id, name, dirmode, season, episode):
+        #refresh info for a Tvshow or movie
+               
+        print 'In Episode Refresh ' + str(sys.argv[1])
+        imdb_id = imdb_id.replace('tttt','')
+
+        if meta_setting=='true':
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
+            meta_installed = metaget.check_meta_installed(addon_id)          
+            
+            if meta_installed:
+                name=CLEANUP(name)
+                metaget.update_episode_meta(name, imdb_id, season, episode)
+                xbmc.executebuiltin("XBMC.Container.Refresh")
 
                 
 def get_episode(season, episode, imdb_id, url, metaget, meta_installed, tmp_season_num=-1, tmp_episode_num=-1, totalitems=0):
@@ -3212,9 +3230,13 @@ if mode==None: #or url==None or len(url)<1:
 elif mode==999:
         print "Mode 999 ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         REFRESH(video_type, url,imdbnum,name,dirmode)
-
+        
 elif mode==998:
-        print "Mode 998 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
+        print "Mode 998 (episode meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
+        episode_refresh(url,imdbnum,name,dirmode,season_num,episode_num)    
+
+elif mode==997:
+        print "Mode 997 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
         SearchForTrailer(name, imdbnum, dirmode)
         
 elif mode==990:
