@@ -652,7 +652,7 @@ class MetaData:
             return
                     
 
-    def get_meta(self, type, name, imdb_id='', tmdb_id='', year='', overlay=''):
+    def get_meta(self, type, name, imdb_id='', tmdb_id='', year='', overlay=6):
         '''
         Main method to get meta data for movie or tvshow. Will lookup by name/year 
         if no IMDB ID supplied.       
@@ -690,7 +690,7 @@ class MetaData:
                 meta = self._get_tmdb_meta(imdb_id, tmdb_id, name, year)
             elif type==self.type_tvshow:
                 meta = self._get_tvdb_meta(imdb_id, name, year)
-                       
+            
             self._cache_save_video_meta(meta, name, type, overlay)
 
         #We want to send back the name that was passed in   
@@ -880,7 +880,7 @@ class MetaData:
             return None
                        
 
-    def _cache_save_video_meta(self, meta, name, type, overlay=''):
+    def _cache_save_video_meta(self, meta, name, type, overlay=6):
         '''
         Saves meta data to SQL table given type
         
@@ -932,9 +932,8 @@ class MetaData:
         if meta.has_key('cast'):
             meta['cast'] = str(meta['cast'])
 
-        #set default overlay if available
-        if overlay:
-            meta['overlay'] = int(overlay)
+        #set default overlay - watched status
+        meta['overlay'] = overlay
         
         print 'Saving cache information: ', meta         
         try:
@@ -1926,7 +1925,7 @@ class MetaData:
         return cover_url
     
 
-    def get_seasons(self, name, imdb_id, seasons):
+    def get_seasons(self, name, imdb_id, seasons, overlay=6):
         '''
         Requests from TVDB a list of images for a given tvshow
         and list of seasons
@@ -1962,7 +1961,7 @@ class MetaData:
                 meta['season'] = int(season)
                 meta['tvdb_id'] = tvdb_id
                 meta['imdb_id'] = imdb_id
-                meta['overlay'] = 6
+                meta['overlay'] = overlay
                 meta['backdrop_url'] = self._get_tvshow_backdrops(imdb_id, tvdb_id)                    
                 
                 #Ensure we are not sending back any None values, XBMC doesn't like them
@@ -1973,6 +1972,46 @@ class MetaData:
             coversList.append(meta)
                    
         return coversList
+
+
+    def update_season(self, name, imdb_id, season):
+        '''
+        Update an individual season:
+            - looks up and deletes existing entry, saving watched flag (overlay)
+            - re-scans TVDB for season image
+        
+        Args:
+            imdb_id (str): IMDB ID
+            season (int): season number to be refreshed
+                        
+        Returns:
+            (list) list of covers found for each season
+        '''     
+
+        #Find tvdb_id for the TVshow
+        tvdb_id = self._get_tvdb_id(name, imdb_id)
+
+        print '---------------------------------------------------------------------------------------'
+        print 'Updating season meta data: %s IMDB: %s TVDB ID: %s SEASON: %s' % (name, imdb_id, tvdb_id, season)
+
+      
+        if imdb_id:
+            imdb_id = self._valid_imdb_id(imdb_id)
+        else:
+            imdb_id = ''
+       
+        #Lookup in cache table for existing entry
+        meta = self._cache_lookup_season(imdb_id, tvdb_id, season)
+        
+        #We found an entry in the DB, so lets delete it
+        if meta:
+            overlay = meta['overlay']
+            self._cache_delete_season_meta(imdb_id, tvdb_id, season)
+        else:
+            overlay = 6
+            print 'No match found in cache db'
+
+        return self.get_seasons(name, imdb_id, season, overlay)
 
 
     def _get_tvshow_backdrops(self, imdb_id, tvdb_id):
@@ -2073,4 +2112,24 @@ class MetaData:
             print '************* Error attempting to insert into cache table: %s ' % e
             print 'Meta data:', meta
             pass         
-            
+
+
+    def _cache_delete_season_meta(self, imdb_id, tvdb_id, season):
+        '''
+        Delete meta data from SQL table
+        
+        Args:
+            imdb_id (str): IMDB ID
+            tvdb_id (str): TVDB ID
+            season (int): Season #
+        '''
+
+        sql_delete = "DELETE FROM season_meta WHERE imdb_id = '%s' AND tvdb_id = '%s' and season = %s" % (imdb_id, tvdb_id, season)
+
+        print 'Deleting table entry: IMDB: %s TVDB: %s Season: %s ' % (imdb_id, tvdb_id, season)
+        print 'SQL DELETE: %s' % sql_delete               
+        try:
+            self.dbcur.execute(sql_delete)
+        except Exception, e:
+            print '************* Error attempting to delete from season cache table: %s ' % e          
+            pass
