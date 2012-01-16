@@ -471,7 +471,9 @@ def Startup_Routines():
      
          # Run the container checking startup routines, if enable meta is set to true
          if meta_setting=='true': ContainerStartup()
-
+     
+     #Rescan Next Aired on startup - actually only rescans every 24hrs
+     xbmc.executebuiltin("RunScript(%s, silent=true)" % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py'))
 
 def create_meta_pack():
        
@@ -707,8 +709,11 @@ def ADD_TO_FAVOURITES(name,url,imdbnum):
 
           print 'NAME:',name,'URL:',url,'IMDB NUMBER:',imdbnum
 
+          #Delete HD entry from filename. using name as filename makes favourites appear alphabetically.
+          adjustedname=Clean_Windows_String(name).strip()
+
           #encode the filename to the safe string
-          adjustedname=base64.urlsafe_b64encode(name)
+          #adjustedname=base64.urlsafe_b64encode(name)
 
           #Save the new favourite if it does not exist.
           NewFavFile=os.path.join(savepath,adjustedname+'.txt')
@@ -717,36 +722,52 @@ def ADD_TO_FAVOURITES(name,url,imdbnum):
                #Use | as separators that can be used by re.split when reading favourites folder.
                favcontents=name+'|'+url+'|'+themode+'|'+imdbnum
                save(NewFavFile,favcontents)
+               
+               Notify('small',name + ' added to favourites','','6000')
+
+               #Rescan Next Aired on startup - actually only rescans every 24hrs
+               xbmc.executebuiltin("RunScript(%s, silent=true)" % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py'))
           else:
-               print 'favourite already exists'
+               print 'Warning - favourite already exists'
+               Notify('small',name + ' favourite already exists','','6000')
 
      else:
-          print 'name or url is none:'
+          Notify('small','Unable to add to favourites','','')
+          print 'Warning - favorite name or url is none:'
           print 'NAME: ',name
           print 'URL: ',url
 
      
 def DELETE_FROM_FAVOURITES(name,url):
-    #Deletes HD entry from filename
-    name=Clean_Windows_String( re.sub(' *HD*','', name) )
-    #encode the filename to the safe string *** to check ***
-    name=base64.urlsafe_b64encode(name)
+
+    #legacy check - encode the filename to the safe string *** to check ***
+    old_name=base64.urlsafe_b64encode(name)
     
+    #Deletes HD entry from filename
+    name=Clean_Windows_String(name).strip()
+      
     favpath=os.path.join(translatedicedatapath,'Favourites')
     
     url_type=URL_TYPE(url)
     
     if url_type=='mirrors':
          itempath=os.path.join(favpath,'Movies',name+'.txt')
+         old_itempath=os.path.join(favpath,'Movies',old_name+'.txt')
     
     elif url_type=='episodes':
          itempath=os.path.join(favpath,'TV',name+'.txt')
+         old_itempath=os.path.join(favpath,'TV',old_name+'.txt')
     
     print 'ITEMPATH: %s' % itempath
+    print 'OLD ITEMPATH: %s' % old_itempath    
     
     if os.path.exists(itempath):
          os.remove(itempath)
          xbmc.executebuiltin("XBMC.Container.Refresh")
+         
+    if os.path.exists(old_itempath):
+         os.remove(old_itempath)
+         xbmc.executebuiltin("XBMC.Container.Refresh")         
 
 
 def CLEAR_FAVOURITES(url):
@@ -2642,8 +2663,9 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
          elif mode == 13: # TV Season
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
-                 liz.setProperty('fanart_image', meta['backdrop_url'])
-             season = meta['season']             
+                 liz.setProperty('fanart_image', meta['backdrop_url'])                
+             season = meta['season']
+             contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s&season=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType, season)))             
          elif mode == 14: # TV Episode
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
@@ -2651,7 +2673,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              season = meta['season']
              episode = meta['episode']
              contextMenuItems.append(('Episode Information', 'XBMC.Action(Info)'))
-             contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s&season=%s&episode=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType, season, episode)))             
+             contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=997&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s&season=%s&episode=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType, season, episode)))
          elif mode == 100: # movies
              addWatched = True
              if movie_fanart == 'true' and movie_fanart_installed == 'true':
@@ -2663,7 +2685,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              if mode in (12, 100):
                  contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=999&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType)))
                  contextMenuItems.append(('Search for trailer', 
-                                          'XBMC.RunPlugin(%s?mode=997&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
+                                          'XBMC.RunPlugin(%s?mode=996&name=%s&url=%s&dirmode=%s&imdbnum=%s)' 
                                           % (sys.argv[0], sysname, sysurl, dirmode, urllib.quote_plus(str(imdb))) ))                        
                      
          #Add Watch/Unwatch context menu             
@@ -2913,7 +2935,7 @@ def REFRESH(videoType, url,imdb_id,name,dirmode):
 
 
 def episode_refresh(url, imdb_id, name, dirmode, season, episode):
-        #refresh info for a Tvshow or movie
+        #refresh info for an episode
                
         print 'In Episode Refresh ' + str(sys.argv[1])
         imdb_id = imdb_id.replace('tttt','')
@@ -2927,7 +2949,23 @@ def episode_refresh(url, imdb_id, name, dirmode, season, episode):
                 metaget.update_episode_meta(name, imdb_id, season, episode)
                 xbmc.executebuiltin("XBMC.Container.Refresh")
 
-                
+
+def season_refresh(url, imdb_id, name, dirmode, season):
+        #refresh info for an episode
+               
+        print 'In Season Refresh ' + str(sys.argv[1])
+        imdb_id = imdb_id.replace('tttt','')
+
+        if meta_setting=='true':
+            metaget=metahandlers.MetaData(preparezip=prepare_zip)
+            meta_installed = metaget.check_meta_installed(addon_id)          
+            
+            if meta_installed:
+                name=CLEANUP(name)            	
+                metaget.update_season(name, imdb_id, season)
+                xbmc.executebuiltin("XBMC.Container.Refresh")
+
+
 def get_episode(season, episode, imdb_id, url, metaget, meta_installed, tmp_season_num=-1, tmp_episode_num=-1, totalitems=0):
         # displays all episodes in the source it is passed.
         imdb_id = imdb_id.replace('t','')
@@ -3230,13 +3268,17 @@ if mode==None: #or url==None or len(url)<1:
 elif mode==999:
         print "Mode 999 ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         REFRESH(video_type, url,imdbnum,name,dirmode)
-        
+
 elif mode==998:
-        print "Mode 998 (episode meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
+        print "Mode 998 (season meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
+        season_refresh(url,imdbnum,name,dirmode,season_num)
+        
+elif mode==997:
+        print "Mode 997 (episode meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         episode_refresh(url,imdbnum,name,dirmode,season_num,episode_num)    
 
-elif mode==997:
-        print "Mode 997 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
+elif mode==996:
+        print "Mode 996 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
         SearchForTrailer(name, imdbnum, dirmode)
         
 elif mode==990:
