@@ -1,3 +1,8 @@
+v1.0.99.11 (Friday, 13 January 2012):
+  - Fixed bug where favorites were not being deleted - favorites should now sort alphabetically
+  - Added single season refresh
+  - Execute Next Aired scan on startup in background, also when a new item is added to favorites
+
 v1.0.99.10 (Thursday, 12 January 2012):
   - Modified wait time increment to round up to no decimals and convert to integer - float caused bug in Ubuntu
   - Added Episode 'Refresh Info'
