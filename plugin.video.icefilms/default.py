@@ -455,6 +455,7 @@ def Zip_DL_and_Install(url,installtype,work_folder,mc):
 
 def Startup_Routines():
      
+
      # avoid error on first run if no paths exists, by creating paths
      if not os.path.exists(translatedicedatapath): os.makedirs(translatedicedatapath)
      if not os.path.exists(transdowninfopath): os.makedirs(transdowninfopath)
@@ -471,6 +472,7 @@ def Startup_Routines():
      
          # Run the container checking startup routines, if enable meta is set to true
          if meta_setting=='true': ContainerStartup()
+
      
      #Rescan Next Aired on startup - actually only rescans every 24hrs
      xbmc.executebuiltin("RunScript(%s, silent=true)" % os.path.join(icepath, 'resources/script.tv.show.next.aired/default.py'))
@@ -739,6 +741,8 @@ def ADD_TO_FAVOURITES(name,url,imdbnum):
 
      
 def DELETE_FROM_FAVOURITES(name,url):
+
+
 
     #legacy check - encode the filename to the safe string *** to check ***
     old_name=base64.urlsafe_b64encode(name)
@@ -1284,6 +1288,7 @@ def TVEPLINKS(source, season, imdb_id):
 def LOADMIRRORS(url):
      # This proceeds from the file page to the separate frame where the mirrors can be found,
      # then executes code to scrape the mirrors
+
      link=GetURL(url)  
      
      #---------------Begin phantom metadata getting--------
@@ -1591,6 +1596,9 @@ def GetSource(id, args, cookie):
 
 
 def SOURCE(page, sources):
+          # Delete old source parts
+          cache.delete('source%')
+
           # get settings
           megapic=handle_file('megapic','')
           shared2pic=handle_file('shared2pic','')
@@ -1793,11 +1801,13 @@ def Get_Path(srcname,vidname):
      if os.path.exists(downloadPath):
 
           #if source is split into parts, attach part number to the videoname.
-          if re.search('Part',srcname) is not None:
+          if re.search('Part',srcname) is not None and selfAddon.getSetting('stack-multi-part') == 'false':
                srcname=(re.split('\|+', srcname))[-1]
                vidname=vidname + ' part' + ((re.split('\ +', srcname))[-1])
                #add file extension
                vidname = vidname+'.avi'
+          elif selfAddon.getSetting('stack-multi-part') == 'true':
+               vidname=vidname + ' part 1'
           elif srcname is not "noext":
                #add file extension
                vidname = vidname+'.avi'
@@ -1878,20 +1888,23 @@ def Item_Meta(name):
           return listitem
 
 
-def do_wait(account, wait_time):
+def do_wait(account, wait_time, quiet=False):
      # do the necessary wait, with  a nice notice and pre-set waiting time. I have found the below waiting times to never fail.
-
-     if account == 'platinum':    
-          return handle_wait(int(wait_time),'Megaupload','Loading video with your *Platinum* account.')
-               
-     elif account == 'premium':    
-          return handle_wait(int(wait_time),'Megaupload','Loading video with your *Premium* account.')
-             
-     elif account == 'free':
-          return handle_wait(int(wait_time),'Megaupload Free User','Loading video with your free account.')
-
+     if quiet == True:
+         xbmc.sleep(wait_time*1000)     
+         return True
      else:
-          return handle_wait(int(wait_time),'Megaupload','Loading video.')
+         if account == 'platinum':    
+              return handle_wait(int(wait_time),'Megaupload','Loading video with your *Platinum* account.')
+                   
+         elif account == 'premium':    
+              return handle_wait(int(wait_time),'Megaupload','Loading video with your *Premium* account.')
+                 
+         elif account == 'free':
+              return handle_wait(int(wait_time),'Megaupload Free User','Loading video with your free account.')
+
+         else:
+              return handle_wait(int(wait_time),'Megaupload','Loading video.')
 
 
 def handle_wait(time_to_wait,title,text):
@@ -1924,18 +1937,20 @@ def handle_wait(time_to_wait,title,text):
          print 'done waiting'
          return True
 
-def Handle_Vidlink(url):
+def Handle_Vidlink(url, wait=True):
      #video link preflight, pays attention to settings / checks if url is mega or 2shared
      ismega = re.search('\.megaupload\.com/', url)
      is2shared = re.search('\.2shared\.com/', url)
      
      if ismega is not None:
-          WaitIf()
+          if wait == True:
+               WaitIf()
           
           mu = megaroutines.megaupload(translatedicedatapath)
           link = mu.resolve_megaup(url)
 
-          finished = do_wait(link[3], link[4])
+          finished = do_wait(link[3], link[4], True)
+
 
           if finished == True:
                return link
@@ -1972,8 +1987,10 @@ def Stream_Source(name,url):
 
     video_seeking = selfAddon.getSetting('video-seeking')
 
+    stack_multi = selfAddon.getSetting('stack-multi-parts')
+    play_action = selfAddon.getSetting('play-action')
     #Play File normal as a stream
-    if video_seeking == 'false':
+    if video_seeking == 'false' and play_action == '0':
         try:
             link = Handle_Vidlink(url)
         except Exception, e:
@@ -1984,6 +2001,8 @@ def Stream_Source(name,url):
         if link:
             play_with_watched(link[0], listitem, mypath)
     
+    elif stack_multi == 'true' and play_action == '2':
+        Download_And_Play_With_Parts(name,url,video_seek=False)
     #Download file in a separate thread then play - delete file when done
     else:
         Download_And_Play(name,url, video_seek=True)
@@ -2330,10 +2349,169 @@ def Download_And_Play(name,url, video_seek=False):
             Notify('big','Download and Play failed!','Error: Cannot write file to disk','')
         if sys.exc_info()[0] in (SmallFile,): 
             Notify('big','Download and Play failed!','Error: Got a file smaller than 10KB','')
-        
+
+def Download_And_Play_With_Parts(name,url, video_seek=False):
+    
+    #Clear the video playlist 
+    playList = xbmc.PlayList( xbmc.PLAYLIST_VIDEO )
+    playList.clear()
+
+    #Find which source
+    sourcenumber = name[8:9]
+    source = eval(cache.get("source"+str(sourcenumber)+"parts"))
+    print 'This is the number of parts %s' % len(source)
+
+    #get proper name of vid                                                                                                           
+    vidname=cache.get('videoname')
+    print 'this is the vidname returned %s' % vidname
+
+    mypath=Get_Path(name,vidname)
+    vidname = vidname + ' Part 1'
+     
+    print 'MYPATH: ',mypath
+    if mypath == 'path not set':
+        Notify('Download Alert','You have not set the download folder.\n Please access the addon settings and set it.','','')
+        return
+
+    if os.path.exists(os.path.join(downloadPath, 'Ping')):
+        os.remove(os.path.join(downloadPath, 'Ping'))
+    if os.path.exists(os.path.join(downloadPath, 'Alive')):
+        os.remove(os.path.join(downloadPath, 'Alive'))
+
+    if os.path.exists(os.path.join(downloadPath, 'Downloading')):
+      fhPing = open(os.path.join(downloadPath, 'Ping'), 'w')
+      fhPing.close()
+      xbmc.sleep(1000)
+      
+      if os.path.exists(os.path.join(downloadPath, 'Alive')):
+          fh = open(os.path.join(downloadPath, 'Alive'))          
+          filePathAlive = fh.readline().strip('\n')
+          fileNameAlive = fh.readline().strip('\n')
+          fh.close()
+          
+          try:
+              os.remove(os.path.join(downloadPath, 'Alive'))
+          except:
+              pass
+          
+          Notify('Download Alert','Currently downloading '+fileNameAlive,'','')
+          addDownloadControls(fileNameAlive, filePathAlive)
+          return
+
+      else:
+          os.remove(os.path.join(downloadPath, 'Ping'))
+          delete_incomplete = selfAddon.getSetting('delete-incomplete-downloads')
+          
+          if delete_incomplete == 'true':
+              if os.path.exists(os.path.join(downloadPath, 'Downloading')):
+                  fh = open(os.path.join(downloadPath, 'Downloading'))          
+                  filePathDownloading = fh.readline().strip('\n')
+                  fh.close()
+                  
+                  try:
+                      os.remove(filePathDownloading)
+                  except:
+                      pass
+                  try:
+                      os.remove(filePathDownloading + '.dling')
+                  except:
+                      pass
+
+          if os.path.exists(os.path.join(downloadPath, 'Downloading')):
+              os.remove(os.path.join(downloadPath, 'Downloading'))
+
+
+    if os.path.isfile(mypath) is True:
+        if os.path.isfile(mypath + '.dling'):
+            try:
+                os.remove(mypath)
+                os.remove(mypath + '.dling')
+            except:
+                print 'download failed: existing incomplete files cannot be removed'
+                return
+        else:
+            Notify('Download Alert','The video you are trying to download already exists!','','')
+
+    try: 
+        link=Handle_Vidlink(source['1'])
+    except:
+        Notify('big','Invalid Source','Unable to play selected source. \n Please try another.','') 
         callEndOfDirectory = False
+        return
+    if link == None:
+        callEndOfDirectory = False
+        return
 
+    print 'attempting to download and play file'
 
+    try:
+        print "Starting Download Thread"
+        dlThread = DownloadThread(link[0], mypath, vidname)
+        dlThread.start()
+        buffer_delay = int(selfAddon.getSetting('buffer-delay'))
+        handle_wait(buffer_delay, "Buffering", "Waiting a bit before playing...")
+        if os.path.exists(mypath):
+            if dlThread.isAlive():
+                listitem=Item_Meta(vidname)
+                playList.add(mypath, listitem)
+                xbmc.Player().play(playList)
+                
+                if video_seek:
+                    if os.path.exists(mypath):
+                        try:
+                            os.remove(mypath)
+                        except:
+                            print 'Failed to delete file after video seeking'
+                else:
+                    addDownloadControls(name,mypath, listitem)
+            else:
+                raise
+        else:
+            raise
+    except Exception, e:
+        print 'EXCEPTION %s' % e
+        if sys.exc_info()[0] in (urllib.ContentTooShortError,): 
+            Notify('big','Download and Play failed!','Error: Content Too Short','')
+        if sys.exc_info()[0] in (OSError,): 
+            Notify('big','Download and Play failed!','Error: Cannot write file to disk','')
+        if sys.exc_info()[0] in (SmallFile,): 
+            Notify('big','Download and Play failed!','Error: Got a file smaller than 10KB','')
+        
+    print '***** Made it this far *****'
+    
+    i=2
+    while i <= len(source):
+        if os.path.isfile(mypath + '.dling'):
+            print '*****Still downloading the current source'
+            xbmc.sleep(5000)
+        else:
+            print '*****start downloading part %s' % str(i)
+            link=Handle_Vidlink(source[str(i)], False)
+            if link == None:
+                callEndOfDirectory = False
+                return
+
+            print 'attempting to download and play part %s' % str(i)
+            mypath = mypath[0:len(mypath)-1] + str(i)
+            vidname = vidname[0:len(vidname)-1] + str(i)
+            listitem=Item_Meta(vidname)
+            try:
+                print "Starting Download Thread"
+                dlThread = DownloadThread(link[0], mypath, vidname)
+                dlThread.start()
+
+            except Exception, e:
+                print 'EXCEPTION %s' % e
+                if sys.exc_info()[0] in (urllib.ContentTooShortError,): 
+                    Notify('big','Download and Play failed!','Error: Content Too Short','')
+                if sys.exc_info()[0] in (OSError,): 
+                    Notify('big','Download and Play failed!','Error: Cannot write file to disk','')
+                if sys.exc_info()[0] in (SmallFile,): 
+                    Notify('big','Download and Play failed!','Error: Got a file smaller than 10KB','')
+            
+            playList.add(mypath, listitem)
+            xbmc.sleep(10000)        
+            i+=1
 def _dlhook(numblocks, blocksize, filesize, dt, start_time):
 
     if dt.dialog != None:
@@ -2561,13 +2739,19 @@ def addExecute(name,url,mode,iconimage):
 
     liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
     liz.setInfo( type="Video", infoLabels={ "Title": name } )
-
+    stack_multi=selfAddon.getSetting('stack-multi-part')
+    print 'this is the value from stack_multi: %s' % stack_multi
+    if stack_multi=='true':
+        mode = '209'
+    else:
+        mode = '206'
+        
     #handle adding context menus
     contextMenuItems = []
 
     contextMenuItems.append(('Play Stream', 'XBMC.RunPlugin(%s?mode=200&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
     contextMenuItems.append(('Download', 'XBMC.RunPlugin(%s?mode=201&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
-    contextMenuItems.append(('Download And Watch', 'XBMC.RunPlugin(%s?mode=206&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
+    contextMenuItems.append(('Download And Watch', 'XBMC.RunPlugin(%s?mode=%s&name=%s&url=%s)' % (sys.argv[0], mode, sysname, sysurl)))
     contextMenuItems.append(('Download with jDownloader', 'XBMC.RunPlugin(plugin://plugin.program.jdownloader/?action=addlink&url=%s)' % (sysurl)))
     contextMenuItems.append(('Check Mega Limits', 'XBMC.RunPlugin(%s?mode=202&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
     contextMenuItems.append(('Kill Streams', 'XBMC.RunPlugin(%s?mode=203&name=%s&url=%s)' % (sys.argv[0], sysname, sysurl)))
@@ -2603,7 +2787,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
      elif mode == 100: # movies
          videoType = 'movie'
      else:
-     	   videoType = video_type
+          videoType = video_type
      
      season = ''
      episode = ''
@@ -2664,6 +2848,7 @@ def addDir(name, url, mode, iconimage, meta=False, imdb=False, delfromfav=False,
              addWatched = True
              if tv_fanart == 'true' and tv_fanart_installed == 'true':
                  liz.setProperty('fanart_image', meta['backdrop_url'])                
+
              season = meta['season']
              contextMenuItems.append(('Refresh Info', 'XBMC.RunPlugin(%s?mode=998&name=%s&url=%s&imdbnum=%s&dirmode=%s&videoType=%s&season=%s)' % (sys.argv[0], sysname, sysurl, urllib.quote_plus(str(imdb)), dirmode, videoType, season)))             
          elif mode == 14: # TV Episode
@@ -2948,6 +3133,7 @@ def episode_refresh(url, imdb_id, name, dirmode, season, episode):
                 name=CLEANUP(name)
                 metaget.update_episode_meta(name, imdb_id, season, episode)
                 xbmc.executebuiltin("XBMC.Container.Refresh")
+
 
 
 def season_refresh(url, imdb_id, name, dirmode, season):
@@ -3269,6 +3455,7 @@ elif mode==999:
         print "Mode 999 ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         REFRESH(video_type, url,imdbnum,name,dirmode)
 
+
 elif mode==998:
         print "Mode 998 (season meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         season_refresh(url,imdbnum,name,dirmode,season_num)
@@ -3276,6 +3463,7 @@ elif mode==998:
 elif mode==997:
         print "Mode 997 (episode meta refresh) ******* dirmode is " + str(dirmode) + " *************  url is -> "+url
         episode_refresh(url,imdbnum,name,dirmode,season_num,episode_num)    
+
 
 elif mode==996:
         print "Mode 996 (trailer search) ******* name is " + str(name) + " *************  url is -> "+url
@@ -3473,6 +3661,8 @@ elif mode==207:
 
 elif mode==208:
         CancelDownload(name)        
+elif mode==209:
+        Download_And_Play_With_Parts(name,url) 
          
 elif mode==666:
         create_meta_pack()
